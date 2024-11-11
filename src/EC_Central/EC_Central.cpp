@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../Common/common.h"
+#include "../Common/Common.h"
 #include <librdkafka/rdkafkacpp.h>
 #include <glib.h>
 
@@ -14,7 +14,6 @@ int main(int argc, char *argv[]) {
     g_debug("This is a debug message");
     g_info("This is an info message");
     g_debug("This is a debug message");
-    g_error("This is an error message");
 
     return 0;
 }

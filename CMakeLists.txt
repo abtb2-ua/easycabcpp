@@ -4,6 +4,7 @@ project(easycabcpp)
 add_compile_options(-Wall)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set include directories
 include_directories(/usr/include/glib-2.0)
@@ -82,3 +83,12 @@ target_compile_options(EC_Central PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_DE PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_SE PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_Customer PUBLIC ${COMMON_CFLAGS})
+
+message("CMAKE SOURCE DIR" ${CMAKE_SOURCE_DIR})
+# Copy compile_commands.json to the desired location
+add_custom_target(copy_compile_commands ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+        ${CMAKE_SOURCE_DIR}/build/compile_commands.json
+        DEPENDS ${CMAKE_BINARY_DIR}/compile_commands.json
+)

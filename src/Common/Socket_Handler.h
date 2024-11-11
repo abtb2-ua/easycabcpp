@@ -3,15 +3,16 @@
 
 class SocketHandler {
 private:
-    int s;
     static constexpr int CLOSED = -1;
+    int s;
 
 public:
     SocketHandler();
-    explicit SocketHandler(int s);
     ~SocketHandler();
 
-    void openSocket(int s);
+    bool openSocket(int s);
+    bool connectTo(int s);
+
     void closeSocket();
 };
 
