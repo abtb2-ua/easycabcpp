@@ -1,0 +1,74 @@
+[
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_Central.dir/src/Common/Socket_Handler.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_Central.dir/src/Common/Socket_Handler.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "output": "CMakeFiles/EC_Central.dir/src/Common/Socket_Handler.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_Central.dir/src/Common/common.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_Central.dir/src/Common/common.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "output": "CMakeFiles/EC_Central.dir/src/Common/common.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_Central.dir/src/EC_Central/EC_Central.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_Central.dir/src/EC_Central/EC_Central.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/EC_Central/EC_Central.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/EC_Central/EC_Central.cpp",
+  "output": "CMakeFiles/EC_Central.dir/src/EC_Central/EC_Central.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_DE.dir/src/Common/Socket_Handler.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_DE.dir/src/Common/Socket_Handler.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "output": "CMakeFiles/EC_DE.dir/src/Common/Socket_Handler.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_DE.dir/src/Common/common.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_DE.dir/src/Common/common.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "output": "CMakeFiles/EC_DE.dir/src/Common/common.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_DE.dir/src/EC_DE/EC_DE.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_DE.dir/src/EC_DE/EC_DE.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/EC_DE/EC_DE.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/EC_DE/EC_DE.cpp",
+  "output": "CMakeFiles/EC_DE.dir/src/EC_DE/EC_DE.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_SE.dir/src/Common/Socket_Handler.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_SE.dir/src/Common/Socket_Handler.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "output": "CMakeFiles/EC_SE.dir/src/Common/Socket_Handler.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_SE.dir/src/Common/common.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_SE.dir/src/Common/common.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "output": "CMakeFiles/EC_SE.dir/src/Common/common.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=600 -fmodules-ts -fmodule-mapper=CMakeFiles/EC_SE.dir/src/EC_SE/EC_SE.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_SE.dir/src/EC_SE/EC_SE.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/EC_SE/EC_SE.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/EC_SE/EC_SE.cpp",
+  "output": "CMakeFiles/EC_SE.dir/src/EC_SE/EC_SE.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -fmodules-ts -fmodule-mapper=CMakeFiles/EC_Customer.dir/src/Common/Socket_Handler.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_Customer.dir/src/Common/Socket_Handler.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/Socket_Handler.cpp",
+  "output": "CMakeFiles/EC_Customer.dir/src/Common/Socket_Handler.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -fmodules-ts -fmodule-mapper=CMakeFiles/EC_Customer.dir/src/Common/common.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_Customer.dir/src/Common/common.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/Common/common.cpp",
+  "output": "CMakeFiles/EC_Customer.dir/src/Common/common.cpp.o"
+},
+{
+  "directory": "/home/ab-flies/universidad/easycabcpp/cmake-build-debug",
+  "command": "/usr/bin/c++ -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -g -std=gnu++20 -fdiagnostics-color=always -Wall -pthread -fmodules-ts -fmodule-mapper=CMakeFiles/EC_Customer.dir/src/EC_Customer/EC_Customer.cpp.o.modmap -MD -fdeps-format=p1689r5 -x c++ -o CMakeFiles/EC_Customer.dir/src/EC_Customer/EC_Customer.cpp.o -c /home/ab-flies/universidad/easycabcpp/src/EC_Customer/EC_Customer.cpp",
+  "file": "/home/ab-flies/universidad/easycabcpp/src/EC_Customer/EC_Customer.cpp",
+  "output": "CMakeFiles/EC_Customer.dir/src/EC_Customer/EC_Customer.cpp.o"
+}
+]
