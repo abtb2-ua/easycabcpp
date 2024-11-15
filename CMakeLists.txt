@@ -6,14 +6,28 @@ add_compile_options(-Wall)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Check if ccache is available and use it
+find_program(CCACHE_PROGRAM ccache)
+
+if(CCACHE_PROGRAM)
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+else()
+    message(STATUS "ccache not found, using regular compilers.")
+endif()
+
+
 # Set include directories
 include_directories(/usr/include/glib-2.0)
+include_directories(/usr/include/glib-2.0/glib)
 include_directories(/usr/lib/glib-2.0/include/)
 include_directories(/usr/lib/x86_64-linux-gnu/glib-2.0/include)
-include_directories(/usr/include/glib-2.0)
-include_directories(/usr/lib/x86_64-linux-gnu/glib-2.0/include)
+include_directories(/usr/local/include/laserpants/dotenv-0.9.3)
+include_directories(./src/Common)
 
 # Check for required packages
+find_package(CppKafka REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB REQUIRED glib-2.0)
 pkg_check_modules(KAFKA REQUIRED rdkafka)
@@ -35,22 +49,18 @@ execute_process(
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-    # Set env variables
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(G_MESSAGES_DEBUG "all")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    unset(LOG_LEVEL)
-endif()
-
 # Set library flags
-set(COMMON_INCLUDE_DIRS ${GLIB_INCLUDE_DIRS} ${KAFKA_INCLUDE_DIRS})
-set(GUI_INCLUDE_DIRS ${NCURSES_INCLUDE_DIRS})
-
-set(COMMON_LIBS ${GLIB_LIBRARIES} ${KAFKA_LIBRARIES} Threads::Threads)
+set(COMMON_LIBS ${GLIB_LIBRARIES} ${KAFKA_LIBRARIES} Threads::Threads CppKafka::cppkafka ${UUID_LIBRARIES})
 set(GUI_LIBS ${NCURSES_LIBRARIES})
+set(MYSQL_LIBS ${MYSQL_LIBS})
 
-set(COMMON_CFLAGS ${GLIB_CFLAGS_OTHER} ${KAFKA_CFLAGS_OTHER})
+set(COMMON_INCLUDE_DIRS ${GLIB_INCLUDE_DIRS} ${KAFKA_INCLUDE_DIRS} ${UUID_INCLUDE_DIRS})
+set(GUI_INCLUDE_DIRS ${NCURSES_INCLUDE_DIRS})
+set(MYSQL_INCLUDE_DIRS /usr/include/mysql)
+
+set(COMMON_CFLAGS ${GLIB_CFLAGS_OTHER} ${KAFKA_CFLAGS_OTHER} ${UUID_CFLAGS_OTHER} ${MYSQL_CFLAGS})
 set(GUI_CFLAGS ${NCURSES_CFLAGS_OTHER})
+set(MYSQL_CFLAGS ${MYSQL_CFLAGS})
 
 
 # Find files
@@ -83,12 +93,3 @@ target_compile_options(EC_Central PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_DE PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_SE PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_Customer PUBLIC ${COMMON_CFLAGS})
-
-message("CMAKE SOURCE DIR" ${CMAKE_SOURCE_DIR})
-# Copy compile_commands.json to the desired location
-add_custom_target(copy_compile_commands ALL
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_BINARY_DIR}/compile_commands.json
-        ${CMAKE_SOURCE_DIR}/build/compile_commands.json
-        DEPENDS ${CMAKE_BINARY_DIR}/compile_commands.json
-)
