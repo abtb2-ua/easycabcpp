@@ -1,4 +1,4 @@
-#include "Socket_Handler.h"
+#include "SocketHandler.h"
 #include "Common.h"
 #include <cstdio>
 #include <unistd.h>
@@ -10,10 +10,28 @@
 using namespace std;
 
 
+// Canonical form
 SocketHandler::SocketHandler(): s(CLOSED) {
 }
 
 SocketHandler::SocketHandler(const int s): s(s) {
+}
+
+SocketHandler::SocketHandler(SocketHandler &&other) noexcept: s(other.s) {
+    other.s = CLOSED;
+}
+
+SocketHandler &SocketHandler::operator=(SocketHandler &&other) noexcept {
+    if (this == &other) { return *this; }
+
+    if (this->s != CLOSED) {
+        close(this->s);
+    }
+
+    this->s = other.s;
+    other.s = CLOSED;
+
+    return *this;
 }
 
 SocketHandler::~SocketHandler() {
@@ -83,7 +101,7 @@ bool SocketHandler::connectTo(const Address &serverAddress) {
 }
 
 void SocketHandler::closeSocket() {
-    if (this->s != CLOSED) {
+    if (this->s != CLOSED && this->closeAtEnd) {
         close(this->s);
         this->s = CLOSED;
     }
@@ -93,26 +111,19 @@ bool SocketHandler::isOpen() const {
     return this->s != CLOSED;
 }
 
-SocketHandler &SocketHandler::operator=(SocketHandler &&other) noexcept {
-    this->s = other.s;
-    other.s = CLOSED;
-    return *this;
-}
-
 SocketHandler SocketHandler::acceptConnections() const {
     if (this->s == CLOSED) {
-        return SocketHandler();
+        return {};
     }
 
     SocketHandler client(accept(this->s, nullptr, nullptr));
 
     if (!client.isOpen()) {
         g_warning("Error accepting connection");
-        return SocketHandler();
+        return {};
     }
 
     return client;
-    // client = SocketHandler(clientSocket);
 }
 
 bool SocketHandler::setTimeout(const int seconds, const int microseconds) const {
@@ -185,7 +196,6 @@ bool SocketHandler::writeToSocket(const char buffer[BUFFER_SIZE]) const {
     lrc ^= _buffer[BUFFER_SIZE + 1];
     _buffer[BUFFER_SIZE + 2] = static_cast<char>(lrc);
 
-    g_debug("Socket = %d", this->s);
     if (write(this->s, _buffer, BUFFER_SIZE + 3) < 1) {
         return false;
     }
@@ -194,7 +204,7 @@ bool SocketHandler::writeToSocket(const char buffer[BUFFER_SIZE]) const {
 }
 
 bool SocketHandler::sendCode(const CODE code) const {
-    char buffer[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE] = {0};
     buffer[0] = static_cast<char>(code);
     return this->writeToSocket(buffer);
 }

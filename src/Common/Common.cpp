@@ -35,14 +35,6 @@ Address::Address(const string &ip, const int port) {
     }
 }
 
-string Address::getIp() const {
-    return this->ip;
-}
-
-int Address::getPort() const {
-    return this->port;
-}
-
 bool Address::setIp(const string &ip) {
     if (ip.empty()) {
         return false;
@@ -78,10 +70,6 @@ bool Address::setPort(const int port) {
     return true;
 }
 
-string Address::toString() const {
-    return this->ip + ":" + to_string(this->port);
-}
-
 bool envTrue(const char* _env) {
     const char *env = getenv(_env);
 
@@ -96,14 +84,14 @@ bool envTrue(const char* _env) {
 
 void log_handler(const gchar *log_domain, const GLogLevelFlags log_level, const gchar *message,
                  gpointer user_data) {
-    const char *GREEN = "\x1b[38;5;156m";
-    const char *RESET = "\x1b[0m";
-    const char *BOLD = "\x1b[1m";
-    const char *BLUE = "\x1b[38;5;75m";
-    const char *ORANGE = "\x1b[38;5;215m";
-    const char *PURPLE = "\x1b[38;5;135m";
-    const char *RED = "\x1b[38;5;9m";
-    const char *PINK = "\x1b[38;5;219m";
+    const auto GREEN = "\x1b[38;5;156m";
+    const auto RESET = "\x1b[0m";
+    const auto BOLD = "\x1b[1m";
+    const auto BLUE = "\x1b[38;5;75m";
+    const auto ORANGE = "\x1b[38;5;215m";
+    const auto PURPLE = "\x1b[38;5;135m";
+    const auto RED = "\x1b[38;5;9m";
+    const auto PINK = "\x1b[38;5;219m";
 
     if ((log_level & G_LOG_LEVEL_MASK) == G_LOG_LEVEL_DEBUG
         && !debugging()
@@ -208,4 +196,34 @@ cppkafka::Configuration getConfig(const bool consumer, string id) {
     }
 
     return config;
+}
+
+bool createProcess(const function<void(const void*)> &callback, const void* args) {
+    const pid_t pid = fork();
+
+    if (pid == -1) { return false; }
+
+    // if child process
+    if (pid == 0) {
+        callback(args);
+        exit(0);
+    }
+
+    return true;
+}
+
+vector<string> splitLines(const string &str, const size_t lineLength) {
+    vector<string> lines;
+    istringstream ss(str);
+    string word;
+
+    while (getline(ss, word, ' ')) {
+        if (lines.empty() || lines.back().size() + word.size() + 1 > lineLength) {
+            lines.push_back(word);
+        } else {
+            lines.back() += " " + word;
+        }
+    }
+
+    return lines;
 }

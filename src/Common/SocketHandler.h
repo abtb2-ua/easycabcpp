@@ -3,9 +3,9 @@
 #include "Common.h"
 
 class SocketHandler {
-private:
-    int s;
     static constexpr int CLOSED = -1;
+    bool closeAtEnd = true;
+    int s;
 
 public:
     enum class CODE {
@@ -25,16 +25,24 @@ public:
 
     static int constexpr BUFFER_SIZE = 100;
 
+    // Canonical form
     SocketHandler();
 
+    /// @note It's recommended to use the openSocket method instead of this constructor.
+    /// However, if you still find this method more convenient, check the setCloseAtEnd method.
     explicit SocketHandler(int s);
 
     SocketHandler(SocketHandler &other) = delete;
 
-    ~SocketHandler();
+    SocketHandler(SocketHandler &&other) noexcept;
+
+    SocketHandler &operator=(SocketHandler &other) = delete;
 
     SocketHandler &operator=(SocketHandler &&other) noexcept;
 
+    ~SocketHandler();
+
+    // Methods
     bool openSocket(int port);
 
     bool connectTo(const Address &serverAddress);
@@ -51,7 +59,11 @@ public:
 
     bool writeToSocket(const char buffer[BUFFER_SIZE]) const;
 
-    [[nodiscard]] bool sendCode(CODE code) const;
+    bool sendCode(CODE code) const; // NOLINT(*-use-nodiscard)
+
+    /// @brief Defines if the socket should be closed when the object is destroyed. Default is true.
+    /// @note Generally it's not recommended to change this value.
+    void setCloseAtEnd(const bool closeAtEnd) { this->closeAtEnd = closeAtEnd; }
 };
 
 #endif //SOCKET_HANDLER_H

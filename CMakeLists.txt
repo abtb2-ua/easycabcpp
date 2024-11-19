@@ -3,7 +3,7 @@ project(easycabcpp)
 
 add_compile_options(-Wall)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Check if ccache is available and use it
@@ -50,7 +50,7 @@ execute_process(
 )
 
 # Set library flags
-set(COMMON_LIBS ${GLIB_LIBRARIES} ${KAFKA_LIBRARIES} Threads::Threads CppKafka::cppkafka ${UUID_LIBRARIES})
+set(COMMON_LIBS ${GLIB_LIBRARIES} ${KAFKA_LIBRARIES} Threads::Threads CppKafka::cppkafka ${UUID_LIBRARIES} -lfmt)
 set(GUI_LIBS ${NCURSES_LIBRARIES})
 set(MYSQL_LIBS ${MYSQL_LIBS})
 
@@ -64,32 +64,34 @@ set(MYSQL_CFLAGS ${MYSQL_CFLAGS})
 
 
 # Find files
-file(GLOB COMMON_SOURCES "src/Common/*.cpp")
 file(GLOB EC_CENTRAL_SOURCES "src/EC_Central/*.cpp")
 file(GLOB EC_DE_SOURCES "src/EC_DE/*.cpp")
 file(GLOB EC_SE_SOURCES "src/EC_SE/*.cpp")
 file(GLOB EC_CUSTOMER_SOURCES "src/EC_Customer/*.cpp")
+file(GLOB COMMON_SOURCES "src/Common/*.cpp")
+file(GLOB NCURSES_SOURCES "src/Common/Ncurses/*.cpp")
+file(GLOB MYSQL_SOURCES "src/Common/MySQL/*.cpp")
 
 # Create executables
-add_executable(EC_Central ${COMMON_SOURCES} ${EC_CENTRAL_SOURCES})
+add_executable(EC_Central ${COMMON_SOURCES} ${EC_CENTRAL_SOURCES} ${NCURSES_SOURCES} ${MYSQL_SOURCES})
 add_executable(EC_DE ${COMMON_SOURCES} ${EC_DE_SOURCES})
 add_executable(EC_SE ${COMMON_SOURCES} ${EC_SE_SOURCES})
 add_executable(EC_Customer ${COMMON_SOURCES} ${EC_CUSTOMER_SOURCES})
 
 # Link libraries
-target_link_libraries(EC_Central PUBLIC ${COMMON_LIBS} ${GUI_LIBS})
+target_link_libraries(EC_Central PUBLIC ${COMMON_LIBS} ${GUI_LIBS} ${MYSQL_LIBS})
 target_link_libraries(EC_DE PUBLIC ${COMMON_LIBS} ${GUI_LIBS})
 target_link_libraries(EC_SE PUBLIC ${COMMON_LIBS} ${GUI_LIBS})
 target_link_libraries(EC_Customer PUBLIC ${COMMON_LIBS})
 
 # Include directories
-target_include_directories(EC_Central PUBLIC ${COMMON_INCLUDE_DIRS} ${GUI_INCLUDE_DIRS})
+target_include_directories(EC_Central PUBLIC ${COMMON_INCLUDE_DIRS} ${GUI_INCLUDE_DIRS} ${MYSQL_INCLUDE_DIRS})
 target_include_directories(EC_DE PUBLIC ${COMMON_INCLUDE_DIRS} ${GUI_INCLUDE_DIRS})
 target_include_directories(EC_SE PUBLIC ${COMMON_INCLUDE_DIRS} ${GUI_INCLUDE_DIRS})
 target_include_directories(EC_Customer PUBLIC ${COMMON_INCLUDE_DIRS})
 
 # Set compiler flags
-target_compile_options(EC_Central PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
+target_compile_options(EC_Central PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS} ${MYSQL_CFLAGS})
 target_compile_options(EC_DE PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_SE PUBLIC ${COMMON_CFLAGS} ${GUI_CFLAGS})
 target_compile_options(EC_Customer PUBLIC ${COMMON_CFLAGS})
