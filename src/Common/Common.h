@@ -1,6 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <any>
 #include <glib.h>
 #include <cppkafka/cppkafka.h>
 #include <iostream>
@@ -58,17 +59,40 @@ void kafka_file_logger(const cppkafka::KafkaHandleBase &handle,
                        const string &facility,
                        const string &message);
 
-inline void generate_unique_id(char uuid[UUID_LENGTH]) {
+inline void generate_unique_id(array<char, UUID_LENGTH>& uuid) {
     uuid_t bin_uuid;
     uuid_generate_random(bin_uuid);
-    uuid_unparse(bin_uuid, uuid);
+    uuid_unparse(bin_uuid, uuid.data());
 }
 
 string getKafkaLogsPath(const cppkafka::KafkaHandleBase &handle);
 
 cppkafka::Configuration getConfig(bool consumer, string id = "");
 
-bool createProcess(const function<void(const void*)> &callback, const void* args);
+
+#include <functional>
+#include <utility>
+#include <sys/types.h>
+#include <unistd.h>
+#include <cstdlib>
+
+template <typename Func, typename... Args>
+bool createProcess(Func&& callback, Args&&... args) {
+    const pid_t pid = fork();
+
+    if (pid == -1) {
+        return false; // Fork failed
+    }
+
+    // If child process
+    if (pid == 0) {
+        invoke(forward<Func>(callback), forward<Args>(args)...);
+        exit(0);
+    }
+
+    return true;
+}
+
 
 vector<string> splitLines(const string &str, size_t lineLength);
 

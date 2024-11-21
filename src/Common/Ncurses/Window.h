@@ -66,6 +66,10 @@ public:
 
     void addMenu(const Menu &menu) const;
 
+    void setTimeout(const int milliseconds) const { wtimeout(this->window, milliseconds); }
+
+    [[nodiscard]] int getChar() const { return wgetch(window); }
+
     void show() const;
 
     /// @brief Show the box around the window

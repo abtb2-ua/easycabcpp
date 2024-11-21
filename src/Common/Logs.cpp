@@ -14,9 +14,11 @@ namespace code_logs {
         {MESSAGE::DEBUG, "{}"},
         {MESSAGE::UNDEFINED, "{}"},
         {ERROR::UNDEFINED, "{}"},
-        {WARNING::UNDEFINED, "a ver {} hola"},
+        {WARNING::UNDEFINED, "{}"},
 
         {MESSAGE::LOADED_LOC_FILE, "Loaded locations file"},
+
+        {ERROR::CREATING_PROCESS, "Error creating process"},
     };
 
 
@@ -59,6 +61,11 @@ namespace code_logs {
     }
 
     void defaultLogHandler(const LogType &code, const string &message) {
+        if (holds_alternative<MESSAGE>(code) && get<MESSAGE>(code) == MESSAGE::DEBUG &&
+            !envTrue("DEBUG") && !debugging()) {
+            return;
+        }
+
         const string RESET = "\x1b[0m";
         const string BLUE = "\x1b[38;5;75m";
 

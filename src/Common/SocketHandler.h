@@ -2,29 +2,46 @@
 #define SOCKET_HANDLER_H
 #include "Common.h"
 
+
+enum class CONTROL_CHAR {
+    ENQ = 0x05,
+    ACK = 0x06,
+    NACK = 0x15,
+    EOT = 0x04,
+    STX = 0x02,
+    ETX = 0x03,
+    NONE = 0x00,
+
+    // Similar ot STX, the message doesn't contain data but a single byte (a control char). LRC and ETX aren't used.
+    STC = 0x01,
+};
+
+enum class READ_RETURN_CODE {
+    READ_DATA,
+    READ_CONTROL_CHAR,
+    FAILED,
+    TIMEOUT
+};
+
 class SocketHandler {
-    static constexpr int CLOSED = -1;
-    bool closeAtEnd = true;
-    int s;
-
 public:
-    enum class CODE {
-        ENQ = 0x05,
-        ACK = 0x06,
-        NACK = 0x15,
-        EOT = 0x04,
-        STX = 0x02,
-        ETX = 0x03
-    };
+    static size_t constexpr BUFFER_SIZE = 100;
 
-    enum class READ_RETURN_CODE {
-        SUCCESS,
-        FAILED,
-        TIMEOUT
-    };
+private:
+    static constexpr int CLOSED = -1;
 
-    static int constexpr BUFFER_SIZE = 100;
+    bool closeAtEnd;
+    int socketfd;
 
+    // Stores the data that will be written to the socket
+    array<byte, BUFFER_SIZE + 3> buffer;
+    // Stores the data read from the socket
+    array<byte, BUFFER_SIZE + 3> data;
+
+
+    [[nodiscard]] READ_RETURN_CODE readFromSocketInternal();
+    [[nodiscard]] bool writeToSocketInternal();
+public:
     // Canonical form
     SocketHandler();
 
@@ -42,7 +59,7 @@ public:
 
     ~SocketHandler();
 
-    // Methods
+    // Connection handling methods
     bool openSocket(int port);
 
     bool connectTo(const Address &serverAddress);
@@ -53,17 +70,37 @@ public:
 
     [[nodiscard]] SocketHandler acceptConnections() const;
 
-    bool setTimeout(int seconds, int microseconds = 0) const; // NOLINT(*-use-nodiscard)
-
-    READ_RETURN_CODE readFromSocket(char buffer[BUFFER_SIZE]) const;
-
-    bool writeToSocket(const char buffer[BUFFER_SIZE]) const;
-
-    bool sendCode(CODE code) const; // NOLINT(*-use-nodiscard)
-
     /// @brief Defines if the socket should be closed when the object is destroyed. Default is true.
     /// @note Generally it's not recommended to change this value.
     void setCloseAtEnd(const bool closeAtEnd) { this->closeAtEnd = closeAtEnd; }
+
+
+    // Write-related methods
+    bool writeToSocket();
+
+    bool sendControlChar(CONTROL_CHAR ch);
+
+    /// @brief Returns a span of the modifiable part of the buffer.
+    span<byte> getBuffer() { return {this->buffer.begin() + 1, BUFFER_SIZE}; }
+
+
+    // Read-related methods
+    [[nodiscard]] READ_RETURN_CODE readFromSocket();
+
+    bool setTimeout(int seconds, int microseconds = 0) const; // NOLINT(*-use-nodiscard)
+
+    [[nodiscard]] bool hasData() const { return this->data[0] == static_cast<byte>(CONTROL_CHAR::STX); }
+
+    [[nodiscard]] bool hasControlChar() const { return this->data[0] == static_cast<byte>(CONTROL_CHAR::STC); }
+
+    [[nodiscard]] bool lastReadFailed() const { return this->data[0] == static_cast<byte>(CONTROL_CHAR::NONE); }
+
+    /// @brief Returns a span of the read data. If no data was read, an empty span is returned.
+    [[nodiscard]] span<const byte> getData() const;
+
+    /// @brief Returns the first byte of the buffer as a CONTROL_CHAR.
+    /// @details In case that the first byte of the buffer does not correspond to any CONTROL_CHAR, NONE is returned.
+    [[nodiscard]] CONTROL_CHAR getControlChar() const;
 };
 
 #endif //SOCKET_HANDLER_H

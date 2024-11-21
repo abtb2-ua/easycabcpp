@@ -169,9 +169,9 @@ void kafka_glib_logger(const cppkafka::KafkaHandleBase &handle,
 
 cppkafka::Configuration getConfig(const bool consumer, string id) {
     if (id.empty()) {
-        char buffer[UUID_LENGTH];
+        array<char, UUID_LENGTH> buffer = {};
         generate_unique_id(buffer);
-        id = buffer;
+        id = buffer.data();
     }
 
     const string bootstrapServers = dotenv::getenv("KAFKA_BOOTSTRAP_SERVER", "127.0.0.1:9092");
@@ -196,20 +196,6 @@ cppkafka::Configuration getConfig(const bool consumer, string id) {
     }
 
     return config;
-}
-
-bool createProcess(const function<void(const void*)> &callback, const void* args) {
-    const pid_t pid = fork();
-
-    if (pid == -1) { return false; }
-
-    // if child process
-    if (pid == 0) {
-        callback(args);
-        exit(0);
-    }
-
-    return true;
 }
 
 vector<string> splitLines(const string &str, const size_t lineLength) {

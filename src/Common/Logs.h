@@ -26,6 +26,7 @@ namespace code_logs {
 
     enum class ERROR {
         UNDEFINED,
+        CREATING_PROCESS,
     };
 
     using LogType = variant<MESSAGE, ERROR, WARNING>;
@@ -55,14 +56,12 @@ namespace code_logs {
     // Any lacking argument will be replaced by an empty string.
     constexpr int NUM_ARGS = 4;
 
-    // SFINAE to check if all arguments are convertible to string
-    template<typename... Args>
-    using AllStrings = typename std::enable_if<conjunction_v<is_convertible<Args, string>...> >;
-
     // Variadic template function that only accepts strings (except for the first argument)
-    template<typename... Args, typename = AllStrings<Args...> >
-    void codeLog(const LogType &code, const Args &... args) {
-        string format_str = formats[code];
+    template<typename... Args>
+    concept AllStrings = (is_convertible_v<Args, string> && ...);
+
+    void codeLog(const LogType &code, AllStrings auto... args) {
+        string format_str = formats.contains(code) ? formats[code] : formats[MESSAGE::UNDEFINED];
 
         // Convert the arguments to a vector of strings to be able to resize it
         vector<string> args_vec = {(args)...};

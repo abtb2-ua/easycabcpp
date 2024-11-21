@@ -19,10 +19,22 @@ void initSession();
 
 void readFile();
 
-char session[UUID_LENGTH];
+array<char, UUID_LENGTH> session = {};
 
 
 int main() {
+    const PipeHandler ph_toGui;
+    const PipeHandler ph_fromGui;
+
+    ncursesGui(ph_fromGui.getWriter(), ph_toGui.getReader());
+
+    int b = 3;
+    function<void(int)> f = [b](int a) {
+        cout << a + b << endl;
+    };
+    f(3);
+    return 0;
+
     dotenv::init(dotenv::Preserve);
 
     initSession();
@@ -30,32 +42,60 @@ int main() {
     if (envTrue("RESET_DB")) {
         readFile();
     }
-    return 0;
-    const PipeHandler pipeHandler;
+    // const PipeHandler ph_toGui;
+    // const PipeHandler ph_fromGui;
 
-    if (!createProcess(ncursesGui,
-                       static_cast<PipeHandler::PipeReader[]>(pipeHandler.getReader()))) {
-        codeLog(ERROR::UNDEFINED, "Error creating process");
+#define safe_createProcess(func, ...) \
+    if (!createProcess(func, __VA_ARGS__)) { \
+        codeLog(ERROR::CREATING_PROCESS); \
+        exit(0); \
     }
 
-    auto writer = pipeHandler.getWriter();
+    safe_createProcess(function(ncursesGui), move(ph_fromGui.getWriter()), move(ph_toGui.getReader()));
 
-    sleep(5);
-
-    bool b = writer.sendCode(SocketHandler::CODE::ACK);
-    return 0;
-
-    const pid_t auth_process = fork();
-
-    if (auth_process == -1) { g_error("Error forking"); }
-
-    if (auth_process == 0) {
-        // Socket module entrypoint
-    }
-
-    // Kafka module entrypoint
+    array<byte, PipeHandler::BUFFER_SIZE> buffer = {};
+    // ph_toGui.getWriter().sendCode(CONTROL_CHAR::ACK);
+    // fork();
+    // ph_fromGui.getReader().readFromPipe(buffer);
+    cout << "Received: " << static_cast<int>(buffer[0]) << endl;;
 
     return 0;
+
+    // PipeHandler ph;
+    // auto writer = ph.getWriter();
+    // auto reader = ph.getReader();
+    //
+    // array<byte, PipeHandler::BUFFER_SIZE> buffer = {};
+    // cout << static_cast<int>(writer.sendCode(CONTROL_CHAR::ACK)) << endl;
+    // cout << static_cast<int>(reader.readFromPipe(buffer)) << endl;
+    // cout << "Received: " << static_cast<int>(buffer[0]) << endl;
+
+    // sleep(2);
+    // cout << "Sending writer" << endl;
+    // PipeHandler ph_fromGui;
+    // auto writer = ph_toGui.getWriter();
+    // auto reader = ph_fromGui.getReader();
+    // array<byte, PipeHandler::BUFFER_SIZE> buffer = {};
+    // buffer[0] = byte{32};
+    // memcpy(buffer.data() + 1, PipeHandler::serialize(ph_fromGui.getWriter()).data(), PipeHandler::BUFFER_SIZE - 1);
+    // writer.writeToPipe(buffer);
+    // sleep(2);
+    // cout << "Sending EOT" << endl;
+    // writer.sendCode(CONTROL_CHAR::EOT);
+    // buffer = {};
+    // cout << "Central: Reading" << endl;
+    // ph_fromGui.getReader().readFromPipe(buffer);
+    // cout << "Central: Read" << endl;
+    // if (buffer[0] != static_cast<byte>(CONTROL_CHAR::EOT))
+    //     cout << "Success" << endl;
+    // else
+    //     cout << "Failed" << endl;
+    // // const auto writer = ph_toGui.getWriter();
+    // //
+    // // if (!)
+    //
+    // cout << "Exiting central" << endl;
+    // return 0;
 }
 
 // void db_schema() {
@@ -85,10 +125,10 @@ void kafka_schema() {
 
 
     const string key = "some_key";
-    char buffer[1024] = {};
-    buffer[0] = 0;
-    buffer[1] = 1;
-    const cppkafka::Buffer smthBuffer(reinterpret_cast<const char *>(&buffer), sizeof(buffer));
+    byte buffer[1024] = {};
+    buffer[0] = byte{0};
+    buffer[1] = byte{1};
+    const cppkafka::Buffer smthBuffer(reinterpret_cast<const byte *>(&buffer), sizeof(buffer));
 
     // Build and produce the message
     producer.produce(cppkafka::MessageBuilder("requests").key(key).payload(smthBuffer));
@@ -107,7 +147,7 @@ void initSession() {
 
         const auto exp = dbConnectionHandler.query(
             fmt::format("CALL Reset_DB();"
-                        "INSERT INTO session(id) VALUES ('{}');", session));
+                        "INSERT INTO session(id) VALUES ('{}');", session.data()));
 
         if (!exp) {
             codeLog(ERROR::UNDEFINED, "Error initializing session: " + exp.error());
@@ -131,7 +171,7 @@ void initSession() {
         codeLog(ERROR::UNDEFINED, "Error initializing session: Invalid session id");
     }
 
-    memcpy(session, row.value()[0].c_str(), UUID_LENGTH);
+    memcpy(session.data(), row.value()[0].c_str(), UUID_LENGTH);
 }
 
 void readFile() {

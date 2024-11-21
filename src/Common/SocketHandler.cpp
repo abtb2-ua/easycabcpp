@@ -11,36 +11,16 @@ using namespace std;
 
 
 // Canonical form
-SocketHandler::SocketHandler(): s(CLOSED) {
-}
-
-SocketHandler::SocketHandler(const int s): s(s) {
-}
-
-SocketHandler::SocketHandler(SocketHandler &&other) noexcept: s(other.s) {
-    other.s = CLOSED;
-}
-
-SocketHandler &SocketHandler::operator=(SocketHandler &&other) noexcept {
-    if (this == &other) { return *this; }
-
-    if (this->s != CLOSED) {
-        close(this->s);
-    }
-
-    this->s = other.s;
-    other.s = CLOSED;
-
-    return *this;
-}
 
 SocketHandler::~SocketHandler() {
-    this->closeSocket();
+    if (this->closeAtEnd) {
+        this->closeSocket();
+    }
 }
 
 bool SocketHandler::openSocket(const int port) {
     constexpr int opt = 1;
-    this->s = socket(AF_INET, SOCK_STREAM, 0);
+    this->socketfd = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in server = {};
 
     if (!this->isOpen()) {
@@ -48,7 +28,7 @@ bool SocketHandler::openSocket(const int port) {
         return false;
     }
 
-    if (setsockopt(this->s, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    if (setsockopt(this->socketfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         g_warning("Error configuring socket.");
         this->closeSocket();
         return false;
@@ -57,7 +37,7 @@ bool SocketHandler::openSocket(const int port) {
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
     server.sin_addr.s_addr = INADDR_ANY;
-    if (bind(this->s, reinterpret_cast<sockaddr *>(&server), sizeof(server)) == -1) {
+    if (bind(this->socketfd, reinterpret_cast<sockaddr *>(&server), sizeof(server)) == -1) {
         this->closeSocket();
         g_warning("Error binding socket.");
         return false;
@@ -65,7 +45,7 @@ bool SocketHandler::openSocket(const int port) {
 
     g_debug("Socket bound");
 
-    if (listen(this->s, 4) == -1) {
+    if (listen(this->socketfd, 4) == -1) {
         this->closeSocket();
         g_warning("Error listening.");
         return false;
@@ -76,7 +56,7 @@ bool SocketHandler::openSocket(const int port) {
 
 bool SocketHandler::connectTo(const Address &serverAddress) {
     sockaddr_in server = {};
-    this->s = socket(AF_INET, SOCK_STREAM, 0);
+    this->socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (!this->isOpen()) {
         g_warning("Error opening socket");
@@ -89,7 +69,7 @@ bool SocketHandler::connectTo(const Address &serverAddress) {
     server.sin_family = AF_INET;
     server.sin_port = htons(serverAddress.getPort());
 
-    if (connect(this->s, reinterpret_cast<struct sockaddr *>(&server), sizeof(server)) == -1) {
+    if (connect(this->socketfd, reinterpret_cast<struct sockaddr *>(&server), sizeof(server)) == -1) {
         this->closeSocket();
         g_warning("Error connecting to server");
         return false;
@@ -101,22 +81,22 @@ bool SocketHandler::connectTo(const Address &serverAddress) {
 }
 
 void SocketHandler::closeSocket() {
-    if (this->s != CLOSED && this->closeAtEnd) {
-        close(this->s);
-        this->s = CLOSED;
+    if (this->socketfd != CLOSED) {
+        close(this->socketfd);
+        this->socketfd = CLOSED;
     }
 }
 
 bool SocketHandler::isOpen() const {
-    return this->s != CLOSED;
+    return this->socketfd != CLOSED;
 }
 
 SocketHandler SocketHandler::acceptConnections() const {
-    if (this->s == CLOSED) {
+    if (this->socketfd == CLOSED) {
         return {};
     }
 
-    SocketHandler client(accept(this->s, nullptr, nullptr));
+    SocketHandler client(accept(this->socketfd, nullptr, nullptr));
 
     if (!client.isOpen()) {
         g_warning("Error accepting connection");
@@ -127,7 +107,7 @@ SocketHandler SocketHandler::acceptConnections() const {
 }
 
 bool SocketHandler::setTimeout(const int seconds, const int microseconds) const {
-    if (this->s == CLOSED) {
+    if (this->socketfd == CLOSED) {
         return false;
     }
 
@@ -135,7 +115,7 @@ bool SocketHandler::setTimeout(const int seconds, const int microseconds) const 
     timeout.tv_sec = seconds;
     timeout.tv_usec = microseconds;
 
-    if (setsockopt(this->s, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+    if (setsockopt(this->socketfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
         g_warning("Error setting timeout");
         return false;
     }
@@ -143,68 +123,86 @@ bool SocketHandler::setTimeout(const int seconds, const int microseconds) const 
     return true;
 }
 
-SocketHandler::READ_RETURN_CODE SocketHandler::readFromSocket(char buffer[BUFFER_SIZE]) const {
-    if (this->s == CLOSED) {
-        g_debug("Attempted to read from closed socket");
+READ_RETURN_CODE SocketHandler::readFromSocketInternal() {
+    if (this->socketfd == CLOSED) {
         return READ_RETURN_CODE::FAILED;
     }
 
 
-    char _buffer[BUFFER_SIZE + 3];
-    if (read(this->s, _buffer, BUFFER_SIZE + 3) < 1) {
-        g_debug("Error reading from socket: %s", strerror(errno));
+    if (read(this->socketfd, this->data.data(), BUFFER_SIZE + 3) < 1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return READ_RETURN_CODE::TIMEOUT;
         }
-
         return READ_RETURN_CODE::FAILED;
     }
 
-    if (_buffer[0] != static_cast<char>(CODE::STX) || _buffer[BUFFER_SIZE + 1] != static_cast<char>(CODE::ETX)) {
+    // Check if the message is a single control char message
+    if (data.front() == static_cast<byte>(CONTROL_CHAR::STC)) {
+        return READ_RETURN_CODE::READ_CONTROL_CHAR;
+    }
+
+    // The message actually contains data, we check if the data has been corrupted (STX, ETX, LRC check)
+    if (data.front() != static_cast<byte>(CONTROL_CHAR::STX) ||
+        *(data.end() - 2) != static_cast<byte>(CONTROL_CHAR::ETX)) {
         return READ_RETURN_CODE::FAILED;
     }
 
-    unsigned char lrc = 0;
-    for (int i = 0; i < BUFFER_SIZE + 2; i++) {
-        lrc ^= _buffer[i];
+    byte lrc{0};
+    for (const auto it: span{data.begin(), data.end() - 1}) {
+        lrc ^= it;
     }
-    if (lrc != static_cast<unsigned char>(_buffer[BUFFER_SIZE + 2])) {
-        g_debug("Lrc doesn't match");
+
+    if (lrc != data.back()) {
         return READ_RETURN_CODE::FAILED;
     }
 
-    memcpy(buffer, _buffer + 1, BUFFER_SIZE);
-
-    return READ_RETURN_CODE::SUCCESS;
+    return READ_RETURN_CODE::READ_DATA;
 }
 
-bool SocketHandler::writeToSocket(const char buffer[BUFFER_SIZE]) const {
-    if (this->s == CLOSED) {
+bool SocketHandler::writeToSocketInternal() {
+    if (this->socketfd == CLOSED) {
         return false;
     }
 
-    char _buffer[BUFFER_SIZE + 3];
-    unsigned char lrc = 0;
-
-    _buffer[0] = static_cast<char>(CODE::STX);
-    lrc ^= _buffer[0];
-    for (int i = 0; i < BUFFER_SIZE; i++) {
-        _buffer[i + 1] = buffer[i];
-        lrc ^= _buffer[i + 1];
-    }
-    _buffer[BUFFER_SIZE + 1] = static_cast<char>(CODE::ETX);
-    lrc ^= _buffer[BUFFER_SIZE + 1];
-    _buffer[BUFFER_SIZE + 2] = static_cast<char>(lrc);
-
-    if (write(this->s, _buffer, BUFFER_SIZE + 3) < 1) {
-        return false;
+    byte lrc{0};
+    for (const auto it: span{buffer.begin(), buffer.end() - 1}) {
+        lrc ^= it;
     }
 
-    return true;
+    this->buffer.back() = lrc;
+
+    return (write(this->socketfd, buffer.data(), BUFFER_SIZE + 3) < 1);
 }
 
-bool SocketHandler::sendCode(const CODE code) const {
-    char buffer[BUFFER_SIZE] = {0};
-    buffer[0] = static_cast<char>(code);
-    return this->writeToSocket(buffer);
+bool SocketHandler::writeToSocket() {
+    this->buffer[0] = static_cast<byte>(CONTROL_CHAR::STX);
+    return this->writeToSocketInternal();
+}
+
+bool SocketHandler::sendControlChar(CONTROL_CHAR ch) {
+    this->buffer[0] = static_cast<byte>(CONTROL_CHAR::STC);
+    this->buffer[1] = static_cast<byte>(ch);
+    return this->writeToSocketInternal();
+}
+
+READ_RETURN_CODE SocketHandler::readFromSocket() {
+    const READ_RETURN_CODE ret = this->readFromSocketInternal();
+    if (ret == READ_RETURN_CODE::FAILED || ret == READ_RETURN_CODE::TIMEOUT) {
+        this->data[0] = static_cast<byte>(CONTROL_CHAR::NONE);
+    }
+    return ret;
+}
+
+span<const byte> SocketHandler::getData() const {
+    if (!this->hasData()) {
+        array<byte, BUFFER_SIZE> empty = {};
+        return {empty.begin(), empty.end()};
+    }
+    return {this->data.begin() + 1, BUFFER_SIZE};
+}
+
+CONTROL_CHAR SocketHandler::getControlChar() const {
+    if (!this->hasControlChar())
+        return CONTROL_CHAR::NONE;
+    return static_cast<CONTROL_CHAR>(this->data[1]);
 }
