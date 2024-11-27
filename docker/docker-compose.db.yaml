@@ -1,0 +1,11 @@
+services:
+  mysql:
+    image: mysql:latest
+    hostname: mysql
+    container_name: mysql-server
+    ports:
+      - '3306:3306'
+    environment:
+        MYSQL_ROOT_PASSWORD: 1234
+    volumes:
+      - '../mysql/initialize.sql:/docker-entrypoint-initdb.d/initialize.sql'

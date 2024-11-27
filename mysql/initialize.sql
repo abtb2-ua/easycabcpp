@@ -14,10 +14,21 @@ CREATE TABLE locations
     y  INT
 );
 
+
+
+DELIMITER !!
+
 CREATE PROCEDURE Reset_DB()
 BEGIN
     DELETE FROM session WHERE 1;
     DELETE FROM locations WHERE 1;
-END;
+END !!
+
+DELIMITER ;
+
+
+
+
 
 select * from locations;
+call Reset_DB();
