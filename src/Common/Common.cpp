@@ -70,16 +70,49 @@ bool Address::setPort(const int port) {
     return true;
 }
 
-bool envTrue(const char* _env) {
-    const char *env = getenv(_env);
+bool envTrue(const string& env) {
+    string envValue = dotenv::getenv(env.c_str());
 
-    if (!env) {
-        return false;
-    }
+    if (envValue.empty()) return false;
 
-    string lower = env;
-    ranges::transform(lower, lower.begin(), ::tolower);
-    return lower == "true" || lower == "1" || lower == "yes" || lower == "y" || lower == "on";
+    ranges::transform(envValue, envValue.begin(), ::tolower);
+    return envValue == "true" || envValue == "1" || envValue == "yes" || envValue == "y" || envValue == "on";
+}
+
+int envInt(const string& env, const int defaultValue) {
+    const string envValue = dotenv::getenv(env.c_str());
+    int value;
+
+    try { value = stoi(envValue); }
+    catch (const exception&) { return defaultValue; }
+
+    return value;
+}
+
+// void generate_unique_id(array<char, UUID_LENGTH> &uuid) {
+//     uuid_t buffer;
+//     uuid_generate(buffer);
+//     uuid_unparse(buffer, uuid.data());
+// }
+
+string generate_unique_id() {
+    string uuid;
+    uuid.resize(36);
+    uuid_t buffer;
+    uuid_generate(buffer);
+    uuid_unparse(buffer, uuid.data());
+    return uuid;
+}
+
+string getTimestamp() {
+    using namespace chrono;
+
+    const auto now = system_clock::now();
+    const time_t current_time = system_clock::to_time_t(now);
+    const tm local_time = *localtime(&current_time);
+    const auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+    return format("[{:02}:{:02}:{:02}.{:03}] ", local_time.tm_hour, local_time.tm_min, local_time.tm_sec, ms.count());
 }
 
 void log_handler(const gchar *log_domain, const GLogLevelFlags log_level, const gchar *message,
@@ -164,38 +197,6 @@ void kafka_glib_logger(const cppkafka::KafkaHandleBase &handle,
               const string &facility,
               const string &message) {
     g_info("[%s]: %s", handle.get_name().c_str(), message.c_str());
-}
-
-
-cppkafka::Configuration getConfig(const bool consumer, string id) {
-    if (id.empty()) {
-        array<char, UUID_LENGTH> buffer = {};
-        generate_unique_id(buffer);
-        id = buffer.data();
-    }
-
-    const string bootstrapServers = dotenv::getenv("KAFKA_BOOTSTRAP_SERVER", "127.0.0.1:9092");
-
-    cppkafka::Configuration config;
-    config.set("log_level", "5");
-    config.set("bootstrap.servers", bootstrapServers);
-    config.set("client.id", id);
-    config.set("acks", "all");
-
-    if (consumer) {
-        config.set("session.timeout.ms", "6000");
-        config.set("auto.offset.reset", "earliest");
-        config.set("group.id", id);
-        config.set("max.poll.interval.ms", "6000");
-    }
-
-    if (envTrue("REDIRECT_KAFKA_LOGS")) {
-        config.set_log_callback(kafka_file_logger);
-    } else {
-        config.set_log_callback(kafka_glib_logger);
-    }
-
-    return config;
 }
 
 vector<string> splitLines(const string &str, const size_t lineLength) {

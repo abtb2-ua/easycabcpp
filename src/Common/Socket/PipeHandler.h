@@ -4,8 +4,9 @@
 
 #ifndef PIPE_HANDLER_H
 #define PIPE_HANDLER_H
-#include <Logs.h>
-#include <SocketHandler.h>
+#include "Logs.h"
+#include "Socket/SocketHandler.h"
+#include "Protocols.h"
 
 using namespace code_logs;
 
@@ -15,8 +16,8 @@ class PipeHandler {
 public:
     static constexpr int BUFFER_SIZE = SocketHandler::BUFFER_SIZE;
 
-    class PipeReader;
-    class PipeWriter;
+    class Reader;
+    class Writer;
 
     // Canonical form
     PipeHandler();
@@ -30,13 +31,13 @@ public:
     PipeHandler &operator=(PipeHandler &&other) = delete;
 
     // Methods
-    [[nodiscard]] PipeReader getReader() const;
+    [[nodiscard]] Reader getReader() const;
 
-    [[nodiscard]] PipeWriter getWriter() const;
+    [[nodiscard]] Writer getWriter() const;
 };
 
 
-class PipeHandler::PipeReader {
+class PipeHandler::Reader {
     friend class PipeHandler;
 
     constexpr static short TM_UNSET = -1;
@@ -45,33 +46,32 @@ class PipeHandler::PipeReader {
     int tm_seconds, tm_microseconds;
     int pipe;
 
-    explicit PipeReader(int pipe);
+    explicit Reader(int pipe);
 
 public:
     // Canonical form
-    PipeReader(const PipeReader &other);
+    Reader(const Reader &other);
 
-    PipeReader(PipeReader &&other) noexcept;
+    Reader(Reader &&other) noexcept;
 
-    PipeReader &operator=(const PipeReader &other) = delete;
+    Reader &operator=(const Reader &other) = delete;
 
-    PipeReader &operator=(PipeReader &&other) noexcept;
+    Reader &operator=(Reader &&other) noexcept;
 
-    READ_RETURN_CODE readFromPipe() { return pipeHandler.readFromSocket(); }
+    ~Reader() = default;
+
+    // Methods
+    // READ_RETURN_CODE readFromPipe();
 
     [[nodiscard]] bool hasData() const { return pipeHandler.hasData(); }
 
     [[nodiscard]] bool hasControlChar() const { return pipeHandler.hasControlChar(); }
 
-    [[nodiscard]] bool lastReadFailed() const { return pipeHandler.lastReadFailed(); }
+    // [[nodiscard]] bool lastReadFailed() const { return pipeHandler.lastReadFailed(); }
 
     [[nodiscard]] span<const byte> getData() const { return pipeHandler.getData(); }
 
     [[nodiscard]] CONTROL_CHAR getControlChar() const { return pipeHandler.getControlChar(); }
-
-    ~PipeReader() = default;
-
-    // Methods
     void setTimeout(const int seconds, const int microseconds = 0) {
         tm_seconds = seconds;
         tm_microseconds = microseconds;
@@ -80,27 +80,25 @@ public:
     void unsetTimeout() {
         tm_seconds = tm_microseconds = TM_UNSET;
     }
-
-    [[nodiscard]] READ_RETURN_CODE readFromPipe();
 };
 
-class PipeHandler::PipeWriter {
+class PipeHandler::Writer {
     friend class PipeHandler;
 
     SocketHandler pipeHandler;
     int pipe;
 
-    explicit PipeWriter(int pipe);
+    explicit Writer(int pipe);
 
 public:
     // Canonical form
-    PipeWriter(const PipeWriter &other) = delete;
+    Writer(const Writer &other) = delete;
 
-    PipeWriter(PipeWriter &&other) noexcept;
+    Writer(Writer &&other) noexcept;
 
-    PipeWriter &operator=(const PipeWriter &other) = delete;
+    Writer &operator=(const Writer &other) = delete;
 
-    PipeWriter &operator=(PipeWriter &&other) noexcept;
+    Writer &operator=(Writer &&other) noexcept;
 
     // Methods
     bool writeToPipe() { return pipeHandler.writeToSocket(); }

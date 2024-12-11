@@ -35,16 +35,22 @@ class DbResults {
     }
 
 public:
+    /// @brief Moves to the next result.
+    /// @return True if there is a next result, false otherwise
     bool nextResult();
 
     /// @brief Gets the next row of the current result.
     /// @note The internal index is incremented. Consecutive calls may not return the same value.
-    /// @return The current row or nullopt if there are no more rows
-    [[nodiscard]] optional<vector<string> > getRow();
+    /// @return The current row or an empty vector if there are no more rows
+    [[nodiscard]] vector<string> getRow();
+
+    bool empty() const { return results.empty(); }
 };
 
 class DbConnectionHandler {
     MYSQL *connection;
+
+    [[nodiscard]] optional<string> checkQueryStatus() const;
 
 public:
     // Canonical form;
@@ -63,7 +69,7 @@ public:
     // Methods
     bool connect();
 
-    [[nodiscard]] optional<string> checkQueryStatus() const;
+    bool isConnected() const { return connection != nullptr; }
 
     [[nodiscard]] expected<DbResults, string> query(const string &query, bool _checkQueryStatus = false) const;
 };

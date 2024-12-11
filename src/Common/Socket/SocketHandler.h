@@ -1,37 +1,31 @@
 #ifndef SOCKET_HANDLER_H
 #define SOCKET_HANDLER_H
+
 #include "Common.h"
+#include "Protocols.h"
 
-
-enum class CONTROL_CHAR {
-    ENQ = 0x05,
-    ACK = 0x06,
-    NACK = 0x15,
-    EOT = 0x04,
-    STX = 0x02,
-    ETX = 0x03,
-    NONE = 0x00,
-
-    // Similar ot STX, the message doesn't contain data but a single byte (a control char). LRC and ETX aren't used.
-    STC = 0x01,
-};
-
-enum class READ_RETURN_CODE {
-    READ_DATA,
-    READ_CONTROL_CHAR,
-    FAILED,
-    TIMEOUT
-};
+using namespace prot;
 
 class SocketHandler {
 public:
-    static size_t constexpr BUFFER_SIZE = 100;
+    static size_t constexpr BUFFER_SIZE = 256;
+
+    enum class READ_ERROR : uint8_t {
+        SOCKET_CLOSED,
+        READ_FAILED,
+        INVALID_FORMAT,
+        INVALID_LRC,
+        TIMEOUT,
+        NONE,
+    };
+
 
 private:
     static constexpr int CLOSED = -1;
 
-    bool closeAtEnd;
     int socketfd;
+    bool closeAtEnd = true;
+    READ_ERROR error = READ_ERROR::NONE;
 
     // Stores the data that will be written to the socket
     array<byte, BUFFER_SIZE + 3> buffer;
@@ -39,7 +33,8 @@ private:
     array<byte, BUFFER_SIZE + 3> data;
 
 
-    [[nodiscard]] READ_RETURN_CODE readFromSocketInternal();
+    bool checkDataFormat();
+    [[nodiscard]] bool readFromSocketInternal();
     [[nodiscard]] bool writeToSocketInternal();
 public:
     // Canonical form
@@ -85,7 +80,7 @@ public:
 
 
     // Read-related methods
-    [[nodiscard]] READ_RETURN_CODE readFromSocket();
+    [[nodiscard]] bool readFromSocket();
 
     bool setTimeout(int seconds, int microseconds = 0) const; // NOLINT(*-use-nodiscard)
 
@@ -93,7 +88,8 @@ public:
 
     [[nodiscard]] bool hasControlChar() const { return this->data[0] == static_cast<byte>(CONTROL_CHAR::STC); }
 
-    [[nodiscard]] bool lastReadFailed() const { return this->data[0] == static_cast<byte>(CONTROL_CHAR::NONE); }
+    /// @brief Returns the error that occurred in the last read operation. If none, NONE is returned.
+    [[nodiscard]] READ_ERROR getError() const { return this->error; }
 
     /// @brief Returns a span of the read data. If no data was read, an empty span is returned.
     [[nodiscard]] span<const byte> getData() const;

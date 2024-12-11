@@ -3,24 +3,30 @@
 //
 
 #include "Ncurses/Common.h"
+
+#include <Common.h>
 #include <ncurses.h>
+
+#include "Window.h"
 
 void initCurses() {
     initscr();
-    curs_set(0);
     keypad(stdscr, true);
     noecho();
     raw();
+    curs_set(0);
+    startColors();
 
     refresh();
 }
 
-void init_color_wrapper(COLOR color, short r, short g, short b) {
-    r = static_cast<short>(r / 256 * 1000);
-    g = static_cast<short>(g / 256 * 1000);
-    b = static_cast<short>(b / 256 * 1000);
-    init_color(static_cast<short>(color), r, g, b);
-    init_pair(static_cast<short>(color), static_cast<short>(color), COLOR_BLACK);
+void initColorWrapper(COLOR _color, short r, short g, short b) {
+    const short color = static_cast<short>(_color);
+    r = r * 1000 / 256;
+    g = g * 1000 / 256;
+    b = b * 1000 / 256;
+    init_color(color, r, g, b);
+    init_pair(color, color, COLOR_BLACK);
 }
 
 void startColors() {
@@ -28,16 +34,66 @@ void startColors() {
 
     init_color(COLOR_BLACK, 75, 75, 75);
 
-    init_color_wrapper(COLOR::RED, 255, 105, 97);
-    init_color_wrapper(COLOR::GREEN, 119, 221, 119);
-    init_color_wrapper(COLOR::YELLOW, 253, 253, 150);
-    init_color_wrapper(COLOR::BLUE, 132, 182, 244);
-    init_color_wrapper(COLOR::MAGENTA, 253, 202, 225);
-    init_color_wrapper(COLOR::PURPLE, 216, 132, 244);
-    init_color_wrapper(COLOR::ORANGE, 255, 189, 102);
+    initColorWrapper(COLOR::RED, 255, 105, 97);
+    initColorWrapper(COLOR::GREEN, 119, 221, 119);
+    initColorWrapper(COLOR::YELLOW, 253, 253, 150);
+    initColorWrapper(COLOR::BLUE, 132, 182, 244);
+    initColorWrapper(COLOR::MAGENTA, 253, 202, 225);
+    initColorWrapper(COLOR::PURPLE, 216, 132, 244);
+    initColorWrapper(COLOR::ORANGE, 255, 189, 102);
 }
 
 
-void endCurses() {
+void endCurses(const string &message) {
+    const int maxX = getmaxx(stdscr);
+    const int maxY = getmaxy(stdscr);
+
+    constexpr int width = 40;
+    vector<string> content;
+    const string prefix = "Error: ";
+    if (!message.empty()) {
+        content = splitLines(prefix + message, width - 2);
+    }
+
+    const int height = 5 + content.size();
+
+    const Window popUp(height, width, (maxY - height) / 2, (maxX - width) / 2, 1, 1);
+    popUp.disableScroll();
+
+    for (size_t i = 0; i < content.size(); i++) {
+        if (i == 0) {
+            string centered = centerString(content[i], width - 3);
+            const auto pos = centered.find(prefix) + prefix.length();
+            popUp.addString(centered.substr(0, pos), COLOR_PAIR(COLOR::RED));
+            popUp.addLine(centered.substr(pos));
+        } else {
+            popUp.addLine(centerString(content[i], width - 3));
+        }
+    }
+
+    popUp.addLine(centerString("Exiting...", width - 3), COLOR_PAIR(COLOR::RED));
+    popUp.addLine();
+    popUp.addLine(centerString("(Press any key to exit)", width - 3), A_DIM);
+    popUp.showBox();
+    popUp.show();
+
+    notimeout(stdscr, false);
+    getch();
     endwin();
+}
+
+COLOR getCodeNcursesColor(const LogType &code) {
+    if (holds_alternative<ERROR>(code)) {
+        return COLOR::RED;
+    }
+    if (holds_alternative<WARNING>(code)) {
+        return COLOR::ORANGE;
+    }
+
+    const auto message = get<MESSAGE>(code);
+    if (message == MESSAGE::DEBUG) {
+        return COLOR::MAGENTA;
+    }
+
+    return COLOR::GREEN;
 }

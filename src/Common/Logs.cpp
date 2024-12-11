@@ -3,22 +3,22 @@
 //
 
 #include "Logs.h"
-#include "Common.h"
 #include <chrono>
-#include <iomanip>
 #include <ctime>
+#include <iomanip>
 #include <vector>
+#include "Common.h"
 
 namespace code_logs {
     map<LogType, string> formats = {
-        {MESSAGE::DEBUG, "{}"},
-        {MESSAGE::UNDEFINED, "{}"},
-        {ERROR::UNDEFINED, "{}"},
-        {WARNING::UNDEFINED, "{}"},
+            {MESSAGE::DEBUG, "{}{}{}{}"},
+            {MESSAGE::UNDEFINED, "{}{}{}{}"},
+            {ERROR::UNDEFINED, "{}{}{}{}"},
+            {WARNING::UNDEFINED, "{}{}{}{}"},
 
-        {MESSAGE::LOADED_LOC_FILE, "Loaded locations file"},
+            {MESSAGE::LOADED_LOC_FILE, "Loaded locations file"},
 
-        {ERROR::CREATING_PROCESS, "Error creating process"},
+            {ERROR::CREATING_PROCESS, "Error creating process"},
     };
 
 
@@ -61,8 +61,8 @@ namespace code_logs {
     }
 
     void defaultLogHandler(const LogType &code, const string &message) {
-        if (holds_alternative<MESSAGE>(code) && get<MESSAGE>(code) == MESSAGE::DEBUG &&
-            !envTrue("DEBUG") && !debugging()) {
+        if (holds_alternative<MESSAGE>(code) && get<MESSAGE>(code) == MESSAGE::DEBUG && !envTrue("DEBUG") &&
+            !debugging()) {
             return;
         }
 
@@ -74,14 +74,15 @@ namespace code_logs {
         const auto now = system_clock::now();
         const time_t current_time = system_clock::to_time_t(now);
         const tm local_time = *localtime(&current_time);
+        const auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
 
-        auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
         cout << BLUE << put_time(&local_time, "[%H:%M:%S") << format(".{:03}] ", ms.count()) << RESET
-                << getCodeANSIColor(code) << to_string(code) << RESET
-                << ": " << message << endl;
+             << getCodeANSIColor(code) << to_string(code) << RESET << ": " << message << endl;
 
         if (holds_alternative<ERROR>(code)) {
             exit(1);
         }
     }
-}
+
+    // void codeLog(string author, const LogType &code, AllStrings auto... args)
+} // namespace code_logs

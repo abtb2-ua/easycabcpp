@@ -5,6 +5,10 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
+#include "Common.h"
+
+
+#include <Protocols.h>
 #include <array>
 #include <ncurses.h>
 #include <queue>
@@ -55,22 +59,30 @@ public:
     ~Window();
 
     // Methods
-    void addString(const string &str, int attribute = 0) const;
+    void addString(const string &str, chtype attribute = 0) const;
 
-    void addLine(const string &str, int attribute = 0) const;
+    void addLine(const string &str = "", chtype attribute = 0) const;
 
-    void addTables(initializer_list<initializer_list<Table *>> tables, bool center_y = false, bool center_x = true) const;
+    void addTables(initializer_list<initializer_list<const Table *>> tables, bool center_y = false,
+                   bool center_x = true) const;
+
+    void addMenu(const Menu &menu) const;
+
+    void addLog(const prot::Log &log) const;
 
     void setTableXMargin(const int margin) { tableXMargin = max(margin, 0); }
     void setTableYMargin(const int margin) { tableYMargin = max(margin, 0); }
 
-    void addMenu(const Menu &menu) const;
-
     void setTimeout(const int milliseconds) const { wtimeout(this->window, milliseconds); }
+
+    void setScroll(const bool scroll) const { scrollok(window, scroll); }
 
     [[nodiscard]] int getChar() const { return wgetch(window); }
 
     void show() const;
+
+    void attrOn(const chtype attribute) const { wattron(window, attribute); }
+    void attrOff(const chtype attribute) const { wattroff(window, attribute); }
 
     /// @brief Show the box around the window
     /// @details This method does not refresh the window and overrides the window content.
@@ -80,6 +92,9 @@ public:
     void clear() const { werase(window); }
 
     void unsetBorders();
+
+    void enableScroll() const { scrollok(window, true); }
+    void disableScroll() const { scrollok(window, false); }
 
     void setBorder(BORDER border, int character);
 };
@@ -102,27 +117,42 @@ class Menu {
     void print(const Window *window) const;
 
 public:
-    Menu(): title(), options() {
+    static constexpr string GAP = "\\g\\a\\p"; // Code unlikely to be used in the options
+
+    explicit Menu(const string &title = "", const vector<string> &options = {}) : title(title), options(options) {}
+
+    /// @brief Changes the prefix to be added to the options
+    /// @param prefix The new prefix. To indicate where the hover and selected indicators should go use $ and #
+    /// respectively
+    void setPrefix(const string &prefix) { this->prefix = prefix; }
+
+    void setHoverIndicator(const char hoverIndicator) { this->hoverIndicator = hoverIndicator; }
+
+    void setSelectedIndicator(const char selectedIndicator) { this->selectedIndicator = selectedIndicator; }
+
+    void setTitle(const string &title) { this->title = title; }
+
+    void setOptions(const vector<string> &options) { this->options = options; }
+
+    void setOption(const size_t index, const string &option) {
+        if (index < options.size())
+            options[index] = option;
     }
 
-    Menu(string title, vector<string> options);
-
-    void setPrefix(const string &prefix) { this->prefix = prefix; }
-    void setHoverIndicator(const char hoverIndicator) { this->hoverIndicator = hoverIndicator; }
-    void setSelectedIndicator(const char selectedIndicator) { this->selectedIndicator = selectedIndicator; }
-    void setTitle(const string &title) { this->title = title; }
-    void setOptions(const vector<string> &options) { this->options = options; }
     void addOption(const string &option) { options.push_back(option); }
 
     void hoverNext();
 
     void hoverPrevious();
 
+    void hover(const size_t index) { hovered = min(index, options.size() - 1); }
+
     void select() { selected = true; }
     void deselect() { selected = false; }
 
     [[nodiscard]] size_t getHovered() const { return hovered; }
     [[nodiscard]] bool isSelected() const { return selected; }
+    [[nodiscard]] const vector<string> &getOptions() const { return options; }
 };
 
 class Table {
@@ -132,7 +162,8 @@ class Table {
     vector<string> headers;
     vector<size_t> colWidths;
     vector<int> colExtraWidths;
-    vector<vector<string> > rows;
+    vector<vector<string>> rows;
+    vector<optional<COLOR>> colors;
     bool hasTitle;
     bool hasHeaders;
     size_t colCount;
@@ -141,12 +172,14 @@ class Table {
 
     void calculateLength();
 
-    template <typename T>
-    void printLine(WINDOW *window, unsigned left_corner, const T &fill, unsigned col, unsigned right_corner) const;
+    template<typename T>
+    void printLine(WINDOW *window, unsigned left_corner, const T &fill, unsigned col, unsigned right_corner,
+                   optional<COLOR> color = nullopt) const;
 
     void print(WINDOW *window, int start_y, int start_x) const;
 
     [[nodiscard]] vector<vector<string>> foldRow(const vector<string> &row) const;
+
 public:
     explicit Table(size_t colCount, vector<size_t> colWidths, string title = "");
 
@@ -158,6 +191,16 @@ public:
     /// @details If the row has more columns than the table, the extra columns will be ignored.
     /// If the row has fewer columns than the table, the missing columns will be empty.
     void addRow(const vector<string> &row);
+
+    void addEmptyRows(size_t count);
+
+    void markRow(size_t row, COLOR color);
+
+    void unMarkRow(size_t row);
+
+    void setRow(size_t row, vector<string> &&value);
+
+    void setRow(size_t row, const vector<string> &value);
 
     void setRow(size_t row, size_t col, const string &value);
 
@@ -177,4 +220,4 @@ public:
     void enableFold() { foldEnabled = true; }
     void disableFold() { foldEnabled = false; }
 };
-#endif //WINDOW_H
+#endif // WINDOW_H

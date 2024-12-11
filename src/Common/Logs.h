@@ -5,11 +5,12 @@
 #ifndef LOGS_H
 #define LOGS_H
 
-#include <variant>
-#include <iostream>
 #include <fmt/core.h>
+#include <functional>
+#include <iostream>
 #include <map>
-#include "Common.h"
+#include <variant>
+#include <vector>
 
 using namespace std;
 
@@ -39,7 +40,9 @@ namespace code_logs {
 
     inline function logHandler = defaultLogHandler;
 
-    void setDefaultLogHandler(const auto &handler) { logHandler = handler; }
+    inline void setDefaultLogHandler(const function<void(const LogType &, const string &)> &handler) {
+        logHandler = handler;
+    }
 
 
     template<typename T, size_t... Indices>
@@ -60,7 +63,7 @@ namespace code_logs {
     template<typename... Args>
     concept AllStrings = (is_convertible_v<Args, string> && ...);
 
-    void codeLog(const LogType &code, AllStrings auto... args) {
+    void codeLog(string author, const LogType &code, AllStrings auto... args) {
         string format_str = formats.contains(code) ? formats[code] : formats[MESSAGE::UNDEFINED];
 
         // Convert the arguments to a vector of strings to be able to resize it
@@ -72,12 +75,17 @@ namespace code_logs {
 
         // Call fmt::format with sanitized arguments
         const string message = apply(
-            [format_str](auto &&... unpackedArgs) { return fmt::format(fmt::runtime(format_str), unpackedArgs...); },
-            args_tuple
-        );
+                [format_str](auto &&...unpackedArgs) { return fmt::format(fmt::runtime(format_str), unpackedArgs...); },
+                args_tuple);
 
-        logHandler(code, message);
+        if (!author.empty()) {
+            logHandler(code, format("[{}] {}", author, message));
+        } else {
+            logHandler(code, message);
+        }
     }
-}
 
-#endif //LOGS_H
+    void codeLog(const LogType &code, AllStrings auto... args) { codeLog("", code, args...); }
+} // namespace code_logs
+
+#endif // LOGS_H

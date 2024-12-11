@@ -1,21 +1,22 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include "Logs.h"
 #include <any>
-#include <glib.h>
 #include <cppkafka/cppkafka.h>
-#include <iostream>
-#include <uuid/uuid.h>
+#include <cstdlib>
 #include <functional>
+#include <iostream>
+#include <sys/types.h>
+#include <unistd.h>
+#include <utility>
+#include <uuid.h>
+
+using namespace std;
 
 #ifdef __linux__
 #include <sys/ptrace.h>
 #endif
-
-// Includes the null terminator
-#define UUID_LENGTH 37
-
-using namespace std;
 
 inline bool debugging() {
 #ifdef __linux__
@@ -49,39 +50,30 @@ public:
     [[nodiscard]] string toString() const { return this->ip + ":" + to_string(this->port); }
 };
 
-bool envTrue(const char* _env);
 
-void log_handler(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
-                 gpointer user_data);
 
-void kafka_file_logger(const cppkafka::KafkaHandleBase &handle,
-                       int level,
-                       const string &facility,
+// Includes the null terminator
+string generate_unique_id();
+
+// [hh:mm:SS.sss]_: 15 chars + '\0'
+string getTimestamp();
+
+bool envTrue(const string& env);
+
+int envInt(const string& env, int defaultValue = 0);
+
+void kafka_file_logger(const cppkafka::KafkaHandleBase &handle, int level, const string &facility,
                        const string &message);
-
-inline void generate_unique_id(array<char, UUID_LENGTH>& uuid) {
-    uuid_t bin_uuid;
-    uuid_generate_random(bin_uuid);
-    uuid_unparse(bin_uuid, uuid.data());
-}
 
 string getKafkaLogsPath(const cppkafka::KafkaHandleBase &handle);
 
-cppkafka::Configuration getConfig(bool consumer, string id = "");
-
-
-#include <functional>
-#include <utility>
-#include <sys/types.h>
-#include <unistd.h>
-#include <cstdlib>
-
-template <typename Func, typename... Args>
-bool createProcess(Func&& callback, Args&&... args) {
+template<typename Func, typename... Args>
+pid_t createProcess(Func &&callback, Args &&...args) {
     const pid_t pid = fork();
 
     if (pid == -1) {
-        return false; // Fork failed
+        codeLog(code_logs::ERROR::CREATING_PROCESS);
+        exit(1);
     }
 
     // If child process
@@ -90,11 +82,14 @@ bool createProcess(Func&& callback, Args&&... args) {
         exit(0);
     }
 
-    return true;
+    return pid;
 }
 
 
 vector<string> splitLines(const string &str, size_t lineLength);
 
+inline string centerString(const string &str, size_t width) {
+    return format("{:^{}}", str, width);
+}
 
-#endif //COMMON_H
+#endif // COMMON_H

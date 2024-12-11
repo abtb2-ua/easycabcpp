@@ -19,9 +19,9 @@ bool DbResults::nextResult() {
     return true;
 }
 
-optional<vector<string> > DbResults::getRow() {
-    if (currentRow >= results[currentResult].size()) {
-        return nullopt;
+vector<string> DbResults::getRow() {
+    if (currentResult >= results.size() || currentRow >= results[currentResult].size()) {
+        return {};
     }
 
     return results[currentResult][currentRow++];
@@ -56,6 +56,8 @@ DbConnectionHandler &DbConnectionHandler::operator=(DbConnectionHandler &&other)
 }
 
 bool DbConnectionHandler::connect() {
+    if (this->isConnected()) return true;
+
     connection = mysql_init(nullptr);
     if (!connection) {
         return false;
@@ -77,6 +79,8 @@ bool DbConnectionHandler::connect() {
 }
 
 optional<string> DbConnectionHandler::checkQueryStatus() const {
+    if (!this->isConnected()) return {};
+
     MYSQL_RES *err = mysql_store_result(connection);
 
     if (!err) {
@@ -95,7 +99,7 @@ optional<string> DbConnectionHandler::checkQueryStatus() const {
 }
 
 expected<DbResults, string> DbConnectionHandler::query(const string &query, const bool _checkQueryStatus) const {
-    if (!connection) {
+    if (!this->isConnected()) {
         return unexpected("Connection not initialized");
     }
 

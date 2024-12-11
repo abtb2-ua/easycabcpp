@@ -3,10 +3,11 @@
 //
 
 #include "Window.h"
+#include "Ncurses/Common.h"
 
 #include <Common.h>
-#include <stdexcept>
 #include <fmt/format.h>
+#include <stdexcept>
 
 using namespace std;
 
@@ -16,6 +17,8 @@ Window::Window(const int height, const int width, const int start_y, const int s
     this->height = height;
     box = newwin(height, width, start_y, start_x);
     window = newwin(height - margin_y * 2, width - margin_x * 2, start_y + margin_y, start_x + margin_x);
+    keypad(window, true);
+    scrollok(window, true);
 }
 
 Window::Window(Window &&other) noexcept {
@@ -29,10 +32,16 @@ Window::Window(Window &&other) noexcept {
 }
 
 Window &Window::operator=(Window &&other) noexcept {
-    if (this != &other) { return *this; }
+    if (this != &other) {
+        return *this;
+    }
 
-    if (box) { delwin(box); }
-    if (window) { delwin(window); }
+    if (box) {
+        delwin(box);
+    }
+    if (window) {
+        delwin(window);
+    }
 
     window = other.window;
     box = other.box;
@@ -55,25 +64,32 @@ void Window::unsetBorders() {
 }
 
 
-void Window::setBorder(BORDER border, const int character) {
-    borders[static_cast<int>(border)] = character;
-}
+void Window::setBorder(BORDER border, const int character) { borders[static_cast<int>(border)] = character; }
 
-void Window::addString(const string &str, const int attribute) const {
-    if (attribute != 0) { wattron(window, attribute); }
+void Window::addString(const string &str, const chtype attribute) const {
+    if (attribute != 0) {
+        wattron(window, attribute);
+    }
     waddstr(window, str.c_str());
-    if (attribute != 0) { wattroff(window, attribute); }
+    if (attribute != 0) {
+        wattroff(window, attribute);
+    }
 }
 
-void Window::addLine(const string &str, const int attribute) const {
-    addString(str + "\n", attribute);
+void Window::addLine(const string &str, const chtype attribute) const { addString(str + "\n", attribute); }
+
+void Window::addMenu(const Menu &menu) const { menu.print(this); }
+
+void Window::addLog(const prot::Log &log) const {
+    const LogType code = log.getCode();
+
+    this->addString(log.getTimestampStr(), COLOR_PAIR(COLOR::BLUE));
+    this->addString(to_string(code) + ": ", COLOR_PAIR(getCodeNcursesColor(code)));
+    this->addLine(log.getMessage());
 }
 
-void Window::addMenu(const Menu &menu) const {
-    menu.print(this);
-}
 
-void Window::addTables(const initializer_list<initializer_list<Table *> > tables, const bool center_y,
+void Window::addTables(const initializer_list<initializer_list<const Table *>> tables, const bool center_y,
                        const bool center_x) const {
     size_t start_y;
 
@@ -127,26 +143,36 @@ void Window::showBox() const {
 }
 
 void Window::show() const {
-    if (window) { wrefresh(window); }
-}
-
-Menu::Menu(string title, vector<string> options)
-    : title(move(title)), options(move(options)) {
+    if (window) {
+        wrefresh(window);
+    }
 }
 
 void Menu::hoverNext() {
     this->deselect();
-    this->hovered = (this->hovered + 1) % this->options.size();
+
+    const size_t size = this->options.size();
+
+    for (size_t i = 0; i < size + 2; i++) {
+        this->hovered = (this->hovered + 1) % size;
+        if (this->options[hovered] != GAP)
+            break;
+    }
 }
 
 void Menu::hoverPrevious() {
     this->deselect();
+
     const size_t size = this->options.size();
-    this->hovered = (this->hovered + size - 1) % size;
+
+    for (size_t i = 0; i < size + 2; i++) {
+        this->hovered = (this->hovered + size - 1) % size;
+        if (this->options[hovered] != GAP)
+            break;
+    }
 }
 
 void Menu::print(const Window *window) const {
-    window->clear();
     if (!this->title.empty()) {
         window->addLine(this->title, A_BOLD);
     }
@@ -161,7 +187,11 @@ void Menu::print(const Window *window) const {
             }
         }
 
-        window->addLine(prefix + this->options[i]);
+        if (this->options[i] == GAP) {
+            window->addLine("");
+        } else {
+            window->addLine(prefix + this->options[i]);
+        }
     }
 }
 
@@ -177,6 +207,7 @@ Table::Table(const size_t colCount, vector<size_t> colWidths, string title) {
     this->colWidths = move(colWidths);
     this->colExtraWidths = vector<int>(colCount, 0);
     this->rows = {};
+    this->colors = {};
     this->headers = {};
 
     this->length = 0; // To avoid compiler warning
@@ -190,6 +221,7 @@ Table::Table(vector<string> headers, string title) {
     this->colCount = headers.size();
     this->headers = move(headers);
     this->rows = {};
+    this->colors = {};
     this->colExtraWidths = vector<int>(colCount, 0);
 
     this->colWidths = vector<size_t>(colCount, 0);
@@ -201,12 +233,28 @@ Table::Table(vector<string> headers, string title) {
     calculateLength();
 }
 
-void Table::clear() {
-    this->rows.clear();
+void Table::clear() { this->rows.clear(); }
+
+void Table::markRow(const size_t row, COLOR color) {
+    if (row >= rows.size()) {
+        return;
+    }
+
+    this->colors[row] = color;
 }
+
+void Table::unMarkRow(const size_t row) {
+    if (row >= rows.size()) {
+        return;
+    }
+
+    this->colors[row] = nullopt;
+}
+
 
 void Table::addRow(const vector<string> &row) {
     this->rows.emplace_back(colCount);
+    this->colors.push_back(nullopt);
 
     size_t i;
     for (i = 0; i < colCount && i < row.size(); i++) {
@@ -216,6 +264,31 @@ void Table::addRow(const vector<string> &row) {
     for (; i < colCount; i++) {
         this->rows.back()[i] = "";
     }
+}
+
+void Table::addEmptyRows(const size_t count) {
+    this->rows.resize(this->rows.size() + count);
+    this->colors.resize(this->colors.size() + count);
+    for (size_t i = 0; i < count; i++) {
+        this->rows[this->rows.size() - count + i].resize(colCount);
+        this->colors[this->colors.size() - count + i] = nullopt;
+    }
+}
+
+void Table::setRow(const size_t row, vector<string> &&value) {
+    if (row >= rows.size() || value.size() != colCount) {
+        return;
+    }
+
+    rows[row] = move(value);
+}
+
+void Table::setRow(const size_t row, const vector<string> &value) {
+    if (row >= rows.size() || value.size() != colCount) {
+        return;
+    }
+
+    rows[row] = value;
 }
 
 void Table::setRow(const size_t row, const size_t col, const string &value) {
@@ -244,19 +317,25 @@ void Table::widenColumn(const size_t col, const int width) {
 
 template<typename T>
 void Table::printLine(WINDOW *window, const unsigned left_corner, const T &fill, const unsigned col,
-                      const unsigned right_corner) const {
+                      const unsigned right_corner, optional<COLOR> color) const {
     waddch(window, left_corner);
     for (size_t i = 0; i < this->colWidths.size(); i++) {
         if (i != 0) {
             waddch(window, col);
         }
 
-        size_t colWidth = this->colWidths[i] + this->colExtraWidths[i];
+        const size_t colWidth = this->colWidths[i] + this->colExtraWidths[i];
 
-        if constexpr (is_same_v<T, vector<string> >) {
+        if constexpr (is_same_v<T, vector<string>>) {
             string str = fill[i];
-            str = fmt::format("{:^{}}", str, colWidth); // Center the string
+            str = centerString(str, colWidth); // Center the string
+            if (color) {
+                wattron(window, COLOR_PAIR(*color));
+            }
             waddstr(window, str.c_str());
+            if (color) {
+                wattroff(window, COLOR_PAIR(*color));
+            }
         } else {
             // unsigned int or some char type
             for (size_t j = 0; j < colWidth; j++) {
@@ -269,6 +348,7 @@ void Table::printLine(WINDOW *window, const unsigned left_corner, const T &fill,
 
 void Table::print(WINDOW *window, const int start_y, const int start_x) const {
     int line = 0;
+
 #define nextLine() wmove(window, start_y + line++, start_x)
 
     // Title
@@ -279,7 +359,7 @@ void Table::print(WINDOW *window, const int start_y, const int start_x) const {
         nextLine();
         waddch(window, ACS_VLINE);
         wattron(window, A_BOLD);
-        waddstr(window, fmt::format("{:^{}}", title, length - 2).c_str());
+        waddstr(window, centerString(title, length - 2).c_str());
         wattroff(window, A_BOLD);
         waddch(window, ACS_VLINE);
     }
@@ -297,36 +377,36 @@ void Table::print(WINDOW *window, const int start_y, const int start_x) const {
     }
 
     // Rows
-    for (const auto &row: rows) {
+    for (size_t i = 0; i < rows.size(); i++) {
         if (this->foldEnabled) {
             vector<vector<string>> rowFolded;
             size_t maxLines = 0; // Maximum number of lines in a row
 
             // Fold the row
-            for (size_t i = 0; i < colCount; i++) {
-                rowFolded.push_back(splitLines(row[i], colWidths[i]));
+            for (size_t j = 0; j < colCount; j++) {
+                rowFolded.push_back(splitLines(rows[i][j], colWidths[j]));
                 maxLines = max(maxLines, rowFolded.back().size());
             }
 
             // Balance the number of lines in each column
-            for (auto& col: rowFolded) {
+            for (auto &col: rowFolded) {
                 while (col.size() < maxLines) {
                     col.emplace_back("");
                 }
             }
 
             // Print the folded row
-            for (size_t i = 0; i < rowFolded.front().size(); i++) {
+            for (size_t j = 0; j < rowFolded.front().size(); j++) {
                 nextLine();
                 vector<string> rowFoldedLine(colCount);
-                for (size_t j = 0; j < colCount; j++) {
-                    rowFoldedLine[j] = rowFolded[j][i];
+                for (size_t k = 0; k < colCount; k++) {
+                    rowFoldedLine[k] = rowFolded[k][j];
                 }
-                this->printLine(window, ACS_VLINE, rowFoldedLine, ACS_VLINE, ACS_VLINE);
+                this->printLine(window, ACS_VLINE, rowFoldedLine, ACS_VLINE, ACS_VLINE, colors[i]);
             }
         } else {
             nextLine();
-            this->printLine(window, ACS_VLINE, row, ACS_VLINE, ACS_VLINE);
+            this->printLine(window, ACS_VLINE, rows[i], ACS_VLINE, ACS_VLINE, colors[i]);
         }
 
         nextLine();
