@@ -84,7 +84,7 @@ void Window::addLog(const prot::Log &log) const {
     const LogType code = log.getCode();
 
     this->addString(log.getTimestampStr(), COLOR_PAIR(COLOR::BLUE));
-    this->addString(to_string(code) + ": ", COLOR_PAIR(getCodeNcursesColor(code)));
+    this->addString(getType(code) + ": ", COLOR_PAIR(getCodeNcursesColor(code)));
     this->addLine(log.getMessage());
 }
 

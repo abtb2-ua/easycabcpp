@@ -45,7 +45,9 @@ class AuthServer {
     static AuthServer server;
 
 public:
-    static void start() { server.listenPetitions(); }
+    static void start() {
+        server.listenPetitions();
+    }
 };
 
 // AuthServer AuthServer::server;

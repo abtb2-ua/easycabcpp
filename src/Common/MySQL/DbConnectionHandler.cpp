@@ -8,6 +8,9 @@
 #include <vector>
 #include <optional>
 #include <expected>
+#include <Logs.h>
+
+using namespace code_logs;
 
 bool DbResults::nextResult() {
     if (currentResult + 1 >= results.size()) {
@@ -127,11 +130,11 @@ expected<DbResults, string> DbConnectionHandler::query(const string &query, cons
         results.newResult();
 
         while (const auto mysql_row = mysql_fetch_row(mysql_res)) {
-            vector<string> row;
-            for (unsigned int i = 0; i < mysql_num_fields(mysql_res); i++) {
-                row.emplace_back(mysql_row[i]);
+            vector<string> row(mysql_num_fields(mysql_res));
+            for (unsigned int i = 0; i < row.size(); i++) {
+                row[i] = mysql_row[i] ? mysql_row[i] : "";
             }
-            results.addRow(row);
+            results.addRow(move(row));
         }
 
         mysql_free_result(mysql_res);

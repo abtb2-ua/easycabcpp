@@ -71,6 +71,9 @@ void endCurses(const string &message) {
         }
     }
 
+    if (!message.empty()) {
+        popUp.addLine();
+    }
     popUp.addLine(centerString("Exiting...", width - 3), COLOR_PAIR(COLOR::RED));
     popUp.addLine();
     popUp.addLine(centerString("(Press any key to exit)", width - 3), A_DIM);

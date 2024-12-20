@@ -26,7 +26,7 @@ void cleanUp();
 
 void centralLogHandler(ProducerWrapper &producer, const LogType &code, const string &message, bool printBottom);
 
-string session = {};
+string session = "";
 pid_t kafkaServerPid = -1;
 pid_t authServerPid = -1;
 
@@ -120,7 +120,7 @@ void initSession() {
     DbConnectionHandler db;
 
     if (!db.connect()) {
-        codeLog(ERROR::UNDEFINED, "Error connecting to database");
+        codeLog(ERROR::DATABASE, "Error connecting to database");
     }
 
     if (envTrue("RESET_DB")) {
@@ -130,33 +130,33 @@ void initSession() {
         const auto exp = db.query(query);
 
         if (!exp.has_value()) {
-            codeLog(ERROR::UNDEFINED, "Error initializing session: " + exp.error());
+            codeLog(ERROR::SESSION, "Error initializing session: " + exp.error());
         }
 
-        codeLog(MESSAGE::UNDEFINED, "Session initialized");
+        codeLog(MESSAGE::SESSION_INITIALIZED, "Session initialized");
         return;
     }
 
     auto exp = db.query("SELECT id FROM session");
     if (!exp.has_value()) {
-        codeLog(ERROR::UNDEFINED, "Error initializing session: %s", exp.error().c_str());
+        codeLog(ERROR::SESSION, "Error initializing session: %s", exp.error().c_str());
     }
 
     const auto row = exp.value().getRow();
 
     if (row.empty()) {
-        codeLog(ERROR::UNDEFINED, "Error initializing session: No session found");
+        codeLog(ERROR::SESSION_NOT_FOUND, "Error initializing session: No session found");
     }
 
     session = row[0];
-    codeLog(MESSAGE::UNDEFINED, "Reconnected to session");
+    codeLog(MESSAGE::RECONNECTED_TO_SESSION, "Reconnected to session");
 }
 
 void readFile() {
     const string fileName = dotenv::getenv("LOCATIONS_FILE", "");
 
     if (fileName.empty()) {
-        codeLog(ERROR::UNDEFINED, "Error reading file: LOCATIONS_FILE not set");
+        codeLog(ERROR::LOCATIONS_FILE_NOT_PROVIDED, "Error reading file: LOCATIONS_FILE not set");
     }
 
     ifstream file(fileName);
@@ -164,11 +164,11 @@ void readFile() {
     DbConnectionHandler dbConnectionHandler;
 
     if (!file.is_open()) {
-        codeLog(ERROR::UNDEFINED, "Error opening file");
+        codeLog(ERROR::OPENING_FILE, "Error opening file");
     }
 
     if (!dbConnectionHandler.connect()) {
-        codeLog(ERROR::UNDEFINED, "Error connecting to database");
+        codeLog(ERROR::DATABASE, "Error connecting to database");
     }
 
     while (getline(file, line)) {

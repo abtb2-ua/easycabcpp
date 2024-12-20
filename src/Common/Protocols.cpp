@@ -26,26 +26,6 @@ void storeValue(vector<byte> &buffer, size_t &offset, const T &value, int n = -1
     storeValue(buffer, offset, &value, n);
 }
 
-template<class... Ts>
-struct overloads : Ts... {
-    using Ts::operator()...;
-};
-
-void storeValue(vector<byte> &buffer, size_t &offset, const code_logs::LogType &value) {
-    // We don't use type index because deserialize will have to be hardcoded.
-    // Using .index() would cause issues if LogType type definition changes.
-    const short type = holds_alternative<code_logs::MESSAGE>(value)   ? 0
-                       : holds_alternative<code_logs::WARNING>(value) ? 1
-                                                                      : 2;
-
-    auto use_message = [](code_logs::MESSAGE message) { return static_cast<int>(message); };
-    auto use_warning = [](code_logs::WARNING warning) { return static_cast<int>(warning); };
-    auto use_error = [](code_logs::ERROR error) { return static_cast<int>(error); };
-
-    storeValue(buffer, offset, type);
-    storeValue(buffer, offset, visit(overloads{use_message, use_error, use_warning}, value));
-}
-
 #define store(...) storeValue(buffer, offset, __VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,36 +33,20 @@ void storeValue(vector<byte> &buffer, size_t &offset, const code_logs::LogType &
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
-void extractValue(const Buffer &data, size_t &offset, T *value, int n = -1) {
-    if (n == -1)
+void extractValue(const span<const byte> &data, size_t &offset, T *value, int n = -1) {
+    if (n == -1) {
         n = sizeof(*value);
-    memcpy(value, data.get_data() + offset, n);
+    }
+    memcpy(value, data.data() + offset, n);
     offset += n;
 }
 
 template<typename T>
-void extractValue(const Buffer &data, size_t &offset, T &value, int n = -1) {
+void extractValue(const span<const byte> &data, size_t &offset, T &value, int n = -1) {
     extractValue(data, offset, &value, n);
 }
 
-void extractValue(const Buffer &data, size_t &offset, code_logs::LogType &value) {
-    short type;
-    int code;
-
-    extractValue(data, offset, type);
-    extractValue(data, offset, code);
-
-    // clang-format off
-    switch (type) {
-        case 0: value = static_cast<code_logs::MESSAGE>(code); break;
-        case 1: value = static_cast<code_logs::WARNING>(code); break;
-        case 2: value = static_cast<code_logs::ERROR>(code); break;
-        default: value = code_logs::MESSAGE::UNDEFINED; break;
-    }
-    // clang-format on
-}
-
-void extractValue(const Buffer &data, size_t &offset, string &value, const int n) {
+void extractValue(const span<const byte> &data, size_t &offset, string &value, const int n) {
     value.resize(n);
     extractValue(data, offset, value.data(), n);
 }
@@ -126,7 +90,7 @@ vector<byte> Log::serialize() const {
     size_t offset = 0;
 
     store(this->printBottom);
-    store(this->code);
+    store(code_logs::toInt(this->code));
     store(this->timestamp.length());
     store(this->message.length());
     store(this->timestamp.data(), this->timestamp.length());
@@ -135,12 +99,14 @@ vector<byte> Log::serialize() const {
     return buffer;
 }
 
-void Log::deserialize(const Buffer &buffer) {
+void Log::deserialize(const span<const byte>& buffer) {
     size_t offset = 0;
     size_t timestampLength, messageLength;
+    int _code;
 
     extract(this->printBottom);
-    extract(this->code);
+    extract(_code);
+    this->code = code_logs::fromInt(_code);
     extract(timestampLength);
     extract(messageLength);
     extract(this->timestamp, timestampLength);
@@ -168,7 +134,7 @@ vector<byte> Map::serialize() const {
     return buffer;
 }
 
-void Map::deserialize(const cppkafka::Buffer &buffer) {
+void Map::deserialize(const span<const byte>& buffer) {
     size_t offset = 0;
     size_t locationsSize, customersSize, taxisSize;
 
@@ -210,14 +176,14 @@ vector<byte> prot::Message::serialize() const {
     return buffer;
 }
 
-void prot::Message::deserialize(const cppkafka::Buffer &buffer) {
+void prot::Message::deserialize(const span<const byte>& buffer) {
     size_t offset = 0;
 
     extract(this->subject);
     extract(this->id);
     extract(this->taxiId);
     extract(this->coord);
-    extract(this->session.data(), this->session.size());
+    extract(this->session, 36);
     extract(this->data.data(), this->data.size());
 }
 

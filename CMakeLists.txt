@@ -82,7 +82,6 @@ add_executable(EC_Central_GUI ${COMMON_SOURCES} ${EC_CENTRAL_GUI_SOURCES} ${NCUR
 add_executable(EC_DE ${COMMON_SOURCES} ${EC_DE_SOURCES} ${NCURSES_SOURCES} ${SOCKET_SOURCES})
 add_executable(EC_SE ${COMMON_SOURCES} ${EC_SE_SOURCES} ${NCURSES_SOURCES} ${SOCKET_SOURCES})
 add_executable(EC_Customer ${COMMON_SOURCES} ${EC_CUSTOMER_SOURCES} ${SOCKET_SOURCES})
-add_executable(addon front/addon.cpp) # Unnecessary, just for the intellisense to work
 
 # Link libraries
 target_link_libraries(EC_Central PUBLIC ${COMMON_LIBS} ${MYSQL_LIBS})

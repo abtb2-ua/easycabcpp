@@ -20,15 +20,15 @@ void AuthServer::listenPetitions() {
 
     const int port = envInt("CENTRAL_LISTEN_PORT", 8080);
     if (!socketHandler.openSocket(port)) {
-        codeLog(ERROR::UNDEFINED, "Error opening socket on port " + to_string(port));
+        codeLog(ERROR::SETTING_SOCKET, "Error opening socket on port " + to_string(port));
     }
-    codeLog(MESSAGE::UNDEFINED, "Listening connections on port " + to_string(port));
+    codeLog(MESSAGE::LISTENING, "Listening connections on port " + to_string(port));
 
     int petitionId = 0;
 
     while (true) {
         SocketHandler client = socketHandler.acceptConnections();
-        codeLog(MESSAGE::UNDEFINED, "Connection with id " + to_string(petitionId) + " accepted");
+        codeLog(MESSAGE::CONNECTION_ACCEPTED, "Connection with id " + to_string(petitionId) + " accepted");
 
         thread attend_thread(&AuthServer::attendPetition, this, move(client), petitionId);
         petitionId++;
@@ -40,51 +40,39 @@ void AuthServer::attendPetition(SocketHandler &&client, const int petitionId) {
     const string author = "Petition " + to_string(petitionId);
 
     if (!client.setTimeout(2)) {
-        codeLog(author, WARNING::UNDEFINED, "Error setting timeout");
+        codeLog(author, WARNING::SETTING_TIMEOUT, "Error setting timeout");
         return;
     }
 
     while (true) {
         if (!client.readFromSocket()) {
             if (client.getError() == SocketHandler::READ_ERROR::TIMEOUT) {
-                codeLog(author, WARNING::UNDEFINED, "Timeout reading from socket");
+                codeLog(author, WARNING::TIMEOUT, "Timeout reading from socket");
                 break;
             }
 
-            codeLog(author, WARNING::UNDEFINED, "Error reading from socket");
-            codeLog(author, MESSAGE::UNDEFINED, "Connection closed");
+            codeLog(author, WARNING::BAD_READING, "Error reading from socket");
+            codeLog(author, MESSAGE::CONNECTION_CLOSED, "Connection closed");
             return;
         }
 
         if (client.hasData()) {
             short id;
             memcpy(&id, client.getData().data(), sizeof(short));
-            codeLog(author, MESSAGE::UNDEFINED, "Requested id ", to_string(id));
 
             bool reconnect = false;
             const bool added = (checkId(author, id, reconnect) && addTaxi(author, id, reconnect));
 
-            if (added) {
-                if (reconnect) {
-                    codeLog(author, MESSAGE::UNDEFINED, "Taxi reconnected");
-                } else {
-                    codeLog(author, MESSAGE::UNDEFINED, "Taxi added");
-                }
-                // TODO: send message to kafka central
-            } else {
-                codeLog(author, WARNING::UNDEFINED, "Taxi with id ", to_string(id), " is already connected");
-            }
-
-            client.sendControlChar(added ? CONTROL_CHAR::ACK : CONTROL_CHAR::NACK);
+            client.getBuffer()[0] = static_cast<byte>(added ? CONTROL_CHAR::ACK : CONTROL_CHAR::NACK);
+            memcpy(client.getBuffer().data() + 1, session.data(), session.size());
+            client.writeToSocket();
             continue;
         }
 
         switch (client.getControlChar()) {
             case CONTROL_CHAR::ENQ: {
-                codeLog(author, MESSAGE::DEBUG, "received ENQ");
                 lock_guard lock(this->mtx_db);
                 const auto ch = (db.isConnected() || db.connect()) ? CONTROL_CHAR::ACK : CONTROL_CHAR::NACK;
-                codeLog(author, MESSAGE::DEBUG, "sending ", to_string(static_cast<int>(ch)));
                 client.sendControlChar(ch);
                 break;
             }
@@ -98,7 +86,6 @@ void AuthServer::attendPetition(SocketHandler &&client, const int petitionId) {
                 break;
         }
     }
-    codeLog(MESSAGE::DEBUG, "Hi");
 }
 
 bool AuthServer::checkId(const string &author, const short taxiId, bool &reconnect) {
@@ -138,9 +125,10 @@ bool AuthServer::addTaxi(const string &author, const short taxiId, const bool re
     }
 
     prot::Message message;
+    codeLog(MESSAGE::UNDEFINED, session);
     message.setSession(session);
-    message.setId(taxiId);
-    message.setSubject(prot::SUBJ_REQUEST::NEW_TAXI);
+    message.setTaxiId(taxiId);
+    message.setSubject(reconnect ? SUBJ_REQUEST::TAXI_RECONNECTED : SUBJ_REQUEST::NEW_TAXI);
 
     {
         lock_guard lock(this->mtx_producer);

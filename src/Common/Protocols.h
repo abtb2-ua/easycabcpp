@@ -17,9 +17,6 @@ namespace prot {
     ///////////////////////////////////////////////////////////////////////////
     /// ENUMS
     ///////////////////////////////////////////////////////////////////////////
-    enum class DEFAULT {
-
-    };
 
     enum class SUBJ_GUI {
         WRITE_BOTTOM_WINDOW,
@@ -28,10 +25,51 @@ namespace prot {
     };
 
     enum class SUBJ_REQUEST {
+        // Don't Change the values, the order is important as it's hardcoded in the front end
+        ORDER_TAXI_GO_TO = 0,
+        ORDER_TAXI_STOP,
+        ORDER_TAXI_CONTINUE,
+        ORDER_TAXI_RETURN_TO_BASE,
+        ORDER_TAXI_DISCONNECT,
+        ORDER_CUSTOMER_DISCONNECT,
+        ORDER_CUSTOMER_PRIORITY,
+        ORDER_LOCATION_MOVE,
+
         NEW_TAXI,
+        TAXI_RECONNECTED,
+        TAXI_READY,
+        TAXI_NOT_READY, // Taxi is not ready to move and waitTime is undefined
+        TAXI_UPDATE_WAIT_TIME, // Taxi is not ready to move and waitTime is sent in the data
+        TAXI_MOVE,
+        TAXI_DESTINATION_REACHED,
+        TAXI_PING,
+
+        NEW_CUSTOMER,
+        CUSTOMER_PING,
+        CUSTOMER_SERVICE_REQUEST,
+        CUSTOMER_UPDATE_NEXT_REQUEST,
     };
 
-    enum class SUBJ_RESPONSE { MAP_UPDATE };
+    enum class SUBJ_RESPONSE {
+        TAXI_GO_TO,
+        TAXI_STOP,
+        TAXI_CONTINUE,
+        TAXI_RETURN_TO_BASE,
+        TAXI_DISCONNECT,
+
+        CUSTOMER_DISCONNECT,
+        CUSTOMER_PRIORITY,
+        CUSTOMER_PICKED_UP,
+        CUSTOMER_DROPPED_OFF,
+        CUSTOMER_ENQUEUED,
+        CUSTOMER_SERVICE_COMPLETED,
+        CUSTOMER_SERVICE_ACCEPTED,
+        CUSTOMER_SERVICE_DENIED,
+
+        MAP_UPDATE,
+        DENY,
+        ACCEPT,
+    };
 
     using SUBJECT = variant<SUBJ_GUI, SUBJ_REQUEST, SUBJ_RESPONSE>;
 
@@ -48,20 +86,6 @@ namespace prot {
         STC = 0x01,
     };
 
-    enum class TAXI_STATUS {
-        DISCONNECTED,
-        STOPPED,
-        CANT_MOVE,
-        MOVING,
-    };
-
-    enum class CUSTOMER_STATUS {
-        IN_QUEUE,
-        WAITING,
-        IN_TAXI,
-        OTHER,
-    };
-
     ///////////////////////////////////////////////////////////////////////////
     /// CLASSES USED AS TEMPLATES IN COMMUNICATION
     ///////////////////////////////////////////////////////////////////////////
@@ -70,10 +94,15 @@ namespace prot {
         virtual ~ISerializable() = default;
         virtual vector<byte> serialize() const = 0;
 
-        virtual void deserialize(const cppkafka::Buffer &buffer) = 0;
+        virtual void deserialize(const span<const byte> &buffer) = 0;
+
+        void deserialize(const cppkafka::Buffer &obj) {
+            const span buffer(reinterpret_cast<const byte *>(obj.begin()), obj.get_size());
+            this->deserialize(buffer);
+        }
     };
 
-    template <typename T>
+    template<typename T>
     concept Serializable = is_base_of_v<ISerializable, T>;
 
     // Topic: logs
@@ -92,39 +121,61 @@ namespace prot {
         string getMessage() const { return message; }
         bool getPrintAtBottom() const { return printBottom; }
 
-        Log& setTimestamp(const string &timestamp) { this->timestamp = timestamp; return *this; }
-        Log& setCode(const code_logs::LogType code) { this->code = code; return *this; }
-        Log& setMessage(const string &message) { this->message = message; return *this; }
-        Log& setPrintAtBottom(const bool printBottom) { this->printBottom = printBottom; return *this; }
+        Log &setTimestamp(const string &timestamp) {
+            this->timestamp = timestamp;
+            return *this;
+        }
+        Log &setCode(const code_logs::LogType code) {
+            this->code = code;
+            return *this;
+        }
+        Log &setMessage(const string &message) {
+            this->message = message;
+            return *this;
+        }
+        Log &setPrintAtBottom(const bool printBottom) {
+            this->printBottom = printBottom;
+            return *this;
+        }
 
         vector<byte> serialize() const override;
-        void deserialize(const cppkafka::Buffer &buffer) override;
+        void deserialize(const span<const byte> &buffer) override;
     };
 
     struct Coordinate {
         int x, y;
 
         string to_string() { return format("[{}, {}]", this->x, this->y); }
+
+        bool operator==(const Coordinate &other) const { return x == other.x && y == other.y; }
+        bool operator!=(const Coordinate &other) const { return !(*this == other); }
+
+        string toString() const { return format("[{:02}, {:02}]", x, y); }
     };
 
     struct Location {
-        u_char id;
+        char id;
         Coordinate coord;
     };
 
     struct Customer {
-        u_char id;
+        char id;
         Coordinate coord;
-        CUSTOMER_STATUS status;
-        u_char location;
+        char destination;
+        bool onboard;
+        bool inQueue;
+        int nextRequest;
     };
 
     struct Taxi {
         short id;
         Coordinate coord;
-        TAXI_STATUS status;
-        u_char service;
-        bool empty;
+        char customer;
+        Coordinate dest;
+        bool connected;
+        bool ready;
+        bool stopped;
+        int waitTime;
     };
 
     // Topic: map
@@ -144,12 +195,12 @@ namespace prot {
         void addTaxi(const Taxi &taxi) { taxis.push_back(taxi); }
 
         vector<byte> serialize() const override;
-        void deserialize(const cppkafka::Buffer &buffer) override;
+        void deserialize(const span<const byte> &buffer) override;
     };
 
     // Topic: requests/responses
     class Message final : ISerializable {
-        static constexpr size_t MAX_DATA_SIZE = 20;
+        static constexpr size_t MAX_DATA_SIZE = 40;
 
         SUBJECT subject;
         u_char id;
@@ -164,26 +215,27 @@ namespace prot {
         // clang-format off
         Message &setSubject(const SUBJECT &subject) { this->subject = subject; return *this; }
 
-        Message &setId(const u_char id) { this->id = id; return *this; }
+        Message &setId(const char id) { this->id = id; return *this; }
 
-        Message &setId(const short taxiId) { this->taxiId = taxiId; return *this; }
+        Message &setTaxiId(const short taxiId) { this->taxiId = taxiId; return *this; }
 
         Message &setCoord(const Coordinate &coord) { this->coord = coord; return *this; }
 
         Message &setSession(const string &session) { this->session = session; return *this; }
         //clang-format on
 
-        Message &setData(const Serializable auto &obj, const int offset = 0) {
+        template <typename T>
+        Message &setData(const T &obj, const int offset = 0) {
             const size_t maxCopy = MAX_DATA_SIZE - offset;
-            if (sizeof(obj) <= maxCopy) {
-                memcpy(this->data.data() + offset, &obj.serialize(), sizeof(data));
+            if (sizeof(T) <= maxCopy) {
+                memcpy(this->data.data() + offset, &obj, sizeof(T));
             }
             return *this;
         }
 
         SUBJECT getSubject() const { return subject; }
 
-        u_char getId() const { return id; }
+        char getId() const { return id; }
 
         short getTaxiId() const { return taxiId; }
 
@@ -191,21 +243,23 @@ namespace prot {
 
         string getSession() const { return session; }
 
-        bool checkSession(string &session) const {
-            return ranges::equal(this->session, session);
+        bool checkSession(const string &session) const {
+            return this->session == session;
         }
 
         template<typename T>
-        T getData(const int offset = 0) const {
+        T getFromData(const int offset = 0, const size_t size = 0) const {
             T obj;
-            memcpy(&obj, data.data() + offset, sizeof(obj));
+            memcpy(&obj, data.data() + offset, size == 0 ? sizeof(obj) : size);
             return obj;
         }
+
+        array<byte, MAX_DATA_SIZE>& getData() { return data; }
 
 
         vector<byte> serialize() const override;
 
-        void deserialize(const cppkafka::Buffer &buffer) override;
+        void deserialize(const span<const byte>& buffer) override;
     };
 
     ///////////////////////////////////////////////////////////////////////////
@@ -222,7 +276,6 @@ namespace prot {
         template <Serializable T>
         void produce(const string &topic, const T &value) {
             vector buffer = value.serialize();
-            cout << "Size of the message: " << buffer.size() << endl;
             Producer::produce(MessageBuilder(topic).payload(Buffer(buffer.begin(), buffer.end())));
         }
 
@@ -249,7 +302,10 @@ namespace prot {
             }
 
             T value;
-            value.deserialize(msg.get_payload());
+            auto& buffer = msg.get_payload();
+            const span _buffer(reinterpret_cast<const byte*>(buffer.begin()), buffer.get_size());
+            // value.deserialize(span(buffer.begin(), buffer.get_size()));
+            value.deserialize(_buffer);
             return value;
         }
     };

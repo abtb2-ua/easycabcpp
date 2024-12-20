@@ -30,7 +30,7 @@ class DbResults {
         results.emplace_back();
     }
 
-    void addRow(vector<string> &row) {
+    void addRow(vector<string> &&row) {
         results.back().emplace_back(row);
     }
 

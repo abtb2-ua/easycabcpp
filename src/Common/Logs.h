@@ -18,23 +18,64 @@ namespace code_logs {
     enum class MESSAGE {
         UNDEFINED,
         DEBUG,
+
+        NEW_TAXI,
+        TAXI_RECONNECTED,
+        TAXI_DISCONNECT,
+        TAXI_MOVE,
+        TAXI_GO_TO,
+        TAXI_CONTINUE,
+        TAXI_STOP,
+        TAXI_READY,
+        TAXI_NOT_READY,
+
         LOADED_LOC_FILE,
+        SESSION_INITIALIZED,
+        RECONNECTED_TO_SESSION,
+
+        LISTENING,
+        CONNECTION_ACCEPTED,
+        CONNECTION_CLOSED,
+
+        NEW_CUSTOMER,
+        CUSTOMER_DISCONNECT,
+        CUSTOMER_PRIORITY,
+        CUSTOMER_PICKED_UP,
+        SERVICE_COMPLETED,
+        SERVICE_REQUEST,
+
+        LOCATION_MOVE,
     };
 
     enum class WARNING {
         UNDEFINED,
+        SETTING_TIMEOUT,
+        BAD_READING,
+        TIMEOUT,
+        INVALID_SUBJECT,
+        QUERY,
+        SHOULD_NOT_HAPPEN,
     };
 
     enum class ERROR {
         UNDEFINED,
         CREATING_PROCESS,
+        DATABASE,
+        LOCATIONS_FILE_NOT_PROVIDED,
+        OPENING_FILE,
+        SESSION,
+        SESSION_NOT_FOUND,
+        SETTING_SOCKET,
     };
 
     using LogType = variant<MESSAGE, ERROR, WARNING>;
 
     extern map<LogType, string> formats;
 
-    string to_string(const LogType &code);
+    int toInt(const LogType &code);
+    LogType fromInt(const int code);
+
+    string getType(const LogType &code);
 
     void defaultLogHandler(const LogType &code, const string &message);
 
@@ -64,7 +105,7 @@ namespace code_logs {
     concept AllStrings = (is_convertible_v<Args, string> && ...);
 
     void codeLog(string author, const LogType &code, AllStrings auto... args) {
-        string format_str = formats.contains(code) ? formats[code] : formats[MESSAGE::UNDEFINED];
+        string format_str = formats.contains(code) ? formats[MESSAGE::UNDEFINED] : formats[MESSAGE::UNDEFINED];
 
         // Convert the arguments to a vector of strings to be able to resize it
         vector<string> args_vec = {(args)...};

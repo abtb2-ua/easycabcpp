@@ -22,7 +22,31 @@ namespace code_logs {
     };
 
 
-    string to_string(const LogType &code) {
+    int toInt(const LogType &code) {
+        if (holds_alternative<MESSAGE>(code)) {
+            return static_cast<int>(get<MESSAGE>(code));
+        }
+
+        if (holds_alternative<WARNING>(code)) {
+            return 100 + static_cast<int>(get<WARNING>(code));
+        }
+
+        return 200 + static_cast<int>(get<ERROR>(code));
+    }
+
+    LogType fromInt(const int code) {
+        if (code < 100) {
+            return static_cast<MESSAGE>(code);
+        }
+
+        if (code < 200) {
+            return static_cast<WARNING>(code - 100);
+        }
+
+        return static_cast<ERROR>(code - 200);
+    }
+
+    string getType(const LogType &code) {
         if (holds_alternative<ERROR>(code)) {
             return "** ERROR **";
         }
@@ -77,7 +101,7 @@ namespace code_logs {
         const auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
 
         cout << BLUE << put_time(&local_time, "[%H:%M:%S") << format(".{:03}] ", ms.count()) << RESET
-             << getCodeANSIColor(code) << to_string(code) << RESET << ": " << message << endl;
+             << getCodeANSIColor(code) << getType(code) << RESET << ": " << message << endl;
 
         if (holds_alternative<ERROR>(code)) {
             exit(1);
