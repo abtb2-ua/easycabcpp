@@ -63,6 +63,10 @@ public:
 
     void addLine(const string &str = "", chtype attribute = 0) const;
 
+    void addChar(const chtype ch, const chtype attribute = 0) const {
+        waddch(window, ch);
+    }
+
     void addTables(initializer_list<initializer_list<const Table *>> tables, bool center_y = false,
                    bool center_x = true) const;
 

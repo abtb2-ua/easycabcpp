@@ -61,43 +61,6 @@ int main() {
     cleanUp();
 }
 
-// void db_schema() {
-//     DbConnectionHandler dbConnectionHandler;
-//     if (!dbConnectionHandler.connect()) {
-//         g_error("Error connecting to database");
-//     }
-//
-//     auto results = dbConnectionHandler.query("select * from t2", false);
-//
-//     if (!results) {
-//         g_error("Error querying database: %s", results.error().c_str());
-//     }
-//
-//     for (auto &result: results.value()) {
-//         for (auto &row: result) {
-//             for (auto &value: row) {
-//                 cout << value << " ";
-//             }
-//             cout << endl;
-//         }
-//     }
-// }
-
-// void kafka_schema() {
-//     cppkafka::Producer producer(getConfig(false));
-//
-//
-//     const string key = "some_key";
-//     byte buffer[1024] = {};
-//     buffer[0] = byte{0};
-//     buffer[1] = byte{1};
-//     const cppkafka::Buffer smthBuffer(reinterpret_cast<const byte *>(&buffer), sizeof(buffer));
-//
-//     // Build and produce the message
-//     producer.produce(cppkafka::MessageBuilder("requests").key(key).payload(smthBuffer));
-//     producer.flush();
-// }
-
 void cleanUp() {
     int status;
     const pid_t pid = waitpid(-1, &status, 0);

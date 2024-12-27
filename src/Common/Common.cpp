@@ -40,6 +40,11 @@ bool Address::setIp(const string &ip) {
         return false;
     }
 
+    if (ip == "localhost") {
+        this->ip = ip;
+        return true;
+    }
+
     int n;
     char c;
     stringstream ss(ip);

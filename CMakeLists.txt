@@ -71,6 +71,8 @@ file(GLOB EC_CENTRAL_GUI_SOURCES "src/EC_Central_GUI/*.cpp")
 file(GLOB EC_DE_SOURCES "src/EC_DE/*.cpp")
 file(GLOB EC_SE_SOURCES "src/EC_SE/*.cpp")
 file(GLOB EC_CUSTOMER_SOURCES "src/EC_Customer/*.cpp")
+file(GLOB EC_CTC_SOURCES "src/EC_CTC/*.cpp")
+file(GLOB EC_REGISTRY_SOURCES "src/EC_Registry/*.cpp")
 file(GLOB COMMON_SOURCES "src/Common/*.cpp")
 file(GLOB NCURSES_SOURCES "src/Common/Ncurses/*.cpp")
 file(GLOB MYSQL_SOURCES "src/Common/MySQL/*.cpp")
@@ -81,7 +83,9 @@ add_executable(EC_Central ${COMMON_SOURCES} ${EC_CENTRAL_SOURCES} ${MYSQL_SOURCE
 add_executable(EC_Central_GUI ${COMMON_SOURCES} ${EC_CENTRAL_GUI_SOURCES} ${NCURSES_SOURCES})
 add_executable(EC_DE ${COMMON_SOURCES} ${EC_DE_SOURCES} ${NCURSES_SOURCES} ${SOCKET_SOURCES})
 add_executable(EC_SE ${COMMON_SOURCES} ${EC_SE_SOURCES} ${NCURSES_SOURCES} ${SOCKET_SOURCES})
-add_executable(EC_Customer ${COMMON_SOURCES} ${EC_CUSTOMER_SOURCES} ${SOCKET_SOURCES})
+add_executable(EC_Customer ${COMMON_SOURCES} ${EC_CUSTOMER_SOURCES})
+add_executable(EC_CTC ${COMMON_SOURCES} ${EC_CTC_SOURCES} ${NCURSES_SOURCES})
+add_executable(EC_Registry ${COMMON_SOURCES} ${EC_REGISTRY_SOURCES} ${NCURSES_SOURCES})
 
 # Link libraries
 target_link_libraries(EC_Central PUBLIC ${COMMON_LIBS} ${MYSQL_LIBS})
@@ -89,6 +93,8 @@ target_link_libraries(EC_Central_GUI PUBLIC ${COMMON_LIBS} ${NCURSES_LIBS})
 target_link_libraries(EC_DE PUBLIC ${COMMON_LIBS} ${NCURSES_LIBS})
 target_link_libraries(EC_SE PUBLIC ${COMMON_LIBS} ${NCURSES_LIBS})
 target_link_libraries(EC_Customer PUBLIC ${COMMON_LIBS})
+target_link_libraries(EC_CTC PUBLIC ${COMMON_LIBS} ${NCURSES_LIBS})
+target_link_libraries(EC_Registry PUBLIC ${COMMON_LIBS} ${NCURSES_LIBS})
 
 # Include directories
 target_include_directories(EC_Central PUBLIC ${COMMON_INCLUDE_DIRS} ${MYSQL_INCLUDE_DIRS})
@@ -96,6 +102,8 @@ target_include_directories(EC_Central_GUI PUBLIC ${COMMON_INCLUDE_DIRS} ${NCURSE
 target_include_directories(EC_DE PUBLIC ${COMMON_INCLUDE_DIRS} ${NCURSES_INCLUDE_DIRS})
 target_include_directories(EC_SE PUBLIC ${COMMON_INCLUDE_DIRS} ${NCURSES_INCLUDE_DIRS})
 target_include_directories(EC_Customer PUBLIC ${COMMON_INCLUDE_DIRS})
+target_include_directories(EC_CTC PUBLIC ${COMMON_INCLUDE_DIRS} ${NCURSES_INCLUDE_DIRS})
+target_include_directories(EC_Registry PUBLIC ${COMMON_INCLUDE_DIRS} ${NCURSES_INCLUDE_DIRS})
 
 # Set compiler flags
 target_compile_options(EC_Central PUBLIC ${COMMON_CFLAGS} ${MYSQL_CFLAGS})
@@ -103,3 +111,5 @@ target_compile_options(EC_Central_GUI PUBLIC ${COMMON_CFLAGS} ${NCURSES_CFLAGS})
 target_compile_options(EC_DE PUBLIC ${COMMON_CFLAGS} ${NCURSES_CFLAGS})
 target_compile_options(EC_SE PUBLIC ${COMMON_CFLAGS} ${NCURSES_CFLAGS})
 target_compile_options(EC_Customer PUBLIC ${COMMON_CFLAGS})
+target_compile_options(EC_CTC PUBLIC ${COMMON_CFLAGS} ${NCURSES_CFLAGS})
+target_compile_options(EC_Registry PUBLIC ${COMMON_CFLAGS} ${NCURSES_CFLAGS})

@@ -20,6 +20,8 @@ enum class COLOR {
     ORANGE
 };
 
+#define ctrl(x) ((x) & 0x1f)
+
 void initCurses();
 void endCurses(const string &message = "");
 
